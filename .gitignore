@@ -69,3 +69,7 @@ htmlcov/
 # Synthetic Generated Datasets
 data/synthetic/*.csv
 !data/sample/patients_sample.csv
+
+# Machine Learning Artifacts & Environments
+ml/models/
+ml/.venv/
