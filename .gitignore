@@ -65,3 +65,7 @@ Thumbs.db
 .coverage
 htmlcov/
 .pytest_cache/
+
+# Synthetic Generated Datasets
+data/synthetic/*.csv
+!data/sample/patients_sample.csv
