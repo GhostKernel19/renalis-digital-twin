@@ -52,7 +52,7 @@ def calculate_ckd_epi_2021(
         * (0.9938**age)
         * gender_factor
     )
-    return np.round(egfr, 1)
+    return np.round(np.clip(egfr, 5.0, 110.0), 1)
 
 
 def generate_cohort(num_patients: int = 500, seed: int = 42):
@@ -156,6 +156,8 @@ def generate_cohort(num_patients: int = 500, seed: int = 42):
         dia_creep = rng.uniform(0.9, 1.5) if det else rng.normal(0, 0.1)
         adh_drop = rng.uniform(3.6, 4.8) if det else rng.normal(0, 0.25)
         step_drop = rng.uniform(220, 320) if det else rng.normal(0, 20)
+        # eGFR upper bound: cannot exceed 110.0 mL/min/1.73 m² and monthly noise cannot exceed 5% above baseline
+        max_allowed_egfr = min(110.0, b_egfr * 1.05)
 
         for m in range(1, 13):
             # Diurnal & monthly physiological variation
@@ -165,17 +167,19 @@ def generate_cohort(num_patients: int = 500, seed: int = 42):
             if det:
                 # Progressive loss: mild early (months 1-6), accelerated late (months 7-12)
                 if m <= 6:
-                    curr_egfr = max(
-                        5.0,
+                    curr_egfr = np.clip(
                         curr_egfr
                         - rng.uniform(0.3, 0.8)
                         + rng.normal(0.0, 0.4),
+                        5.0,
+                        max_allowed_egfr,
                     )
                 else:
-                    curr_egfr = max(
-                        5.0,
+                    curr_egfr = np.clip(
                         curr_egfr * (1.0 - late_decay_rate)
                         + rng.normal(0.0, 0.4),
+                        5.0,
+                        max_allowed_egfr,
                     )
 
                 m_sys = int(
@@ -213,8 +217,10 @@ def generate_cohort(num_patients: int = 500, seed: int = 42):
                 )
             else:
                 # Stable patients: slight age-related drift with standard biological noise
-                curr_egfr = max(
-                    5.0, b_egfr - 0.04 * (m - 1) + rng.normal(0.0, 0.85)
+                curr_egfr = np.clip(
+                    b_egfr - 0.04 * (m - 1) + rng.normal(0.0, 0.85),
+                    5.0,
+                    max_allowed_egfr,
                 )
                 m_sys = int(
                     np.clip(base_sys + diurnal_bp_noise + rng.normal(0, 2.0), 90, 185)
