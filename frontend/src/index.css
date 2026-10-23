@@ -1,0 +1,137 @@
+/* ==========================================================================
+   RENALIS Design System & Global Styles
+   Digital Twin Challenge 2026
+   Theme: Light Theme Only
+   Tokens: Navy #152C3B, Teal #176B63, Blue #5279B9, Canvas #F5F7F8,
+           Surface #FFFFFF, Border #DCE5EA
+   Typography: Inter
+   ========================================================================== */
+
+:root {
+  /* Brand & Core Palette */
+  --color-navy: #152C3B;
+  --color-navy-dark: #0D1C26;
+  --color-navy-light: #1E3E52;
+  --color-teal: #176B63;
+  --color-teal-hover: #1F7D74;
+  --color-teal-light: #E7F3F1;
+  --color-teal-dark: #0F4943;
+  --color-blue: #5279B9;
+  --color-blue-hover: #43659E;
+  --color-blue-light: #EEF3FA;
+  
+  /* Canvas & Surfaces */
+  --color-canvas: #F5F7F8;
+  --color-surface: #FFFFFF;
+  --color-surface-hover: #F9FBFC;
+  --color-surface-active: #F0F4F7;
+  --color-border: #DCE5EA;
+  --color-border-subtle: #E8EFF3;
+  --color-border-focus: #5279B9;
+
+  /* Typography Colors */
+  --color-text-primary: #152C3B;
+  --color-text-secondary: #526779;
+  --color-text-muted: #889DAF;
+  --color-text-on-dark: #FFFFFF;
+  --color-text-on-dark-muted: #9BB0C1;
+
+  /* Clinical Risk Tags (Pills with dot) */
+  --color-risk-high-text: #B42318;
+  --color-risk-high-bg: #FEE4E2;
+  --color-risk-high-border: #FECDCA;
+  --color-risk-high-dot: #D92D20;
+
+  --color-risk-med-text: #B54708;
+  --color-risk-med-bg: #FEF0C7;
+  --color-risk-med-border: #FEDF89;
+  --color-risk-med-dot: #F79009;
+
+  --color-risk-low-text: #027A48;
+  --color-risk-low-bg: #ECFDF3;
+  --color-risk-low-border: #A6F4C5;
+  --color-risk-low-dot: #12B76A;
+
+  /* Status Tags */
+  --color-status-pending-text: #B54708;
+  --color-status-pending-bg: #FEF0C7;
+  --color-status-review-text: #175CD3;
+  --color-status-review-bg: #EFF8FF;
+  --color-status-done-text: #027A48;
+  --color-status-done-bg: #ECFDF3;
+
+  /* Typography */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Sizing & Radii */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-pill: 9999px;
+
+  /* Box Shadows */
+  --shadow-xs: 0 1px 2px rgba(21, 44, 59, 0.04);
+  --shadow-sm: 0 1px 3px rgba(21, 44, 59, 0.06), 0 1px 2px rgba(21, 44, 59, 0.04);
+  --shadow-md: 0 4px 14px rgba(21, 44, 59, 0.07);
+  --shadow-lg: 0 10px 28px rgba(21, 44, 59, 0.09);
+
+  /* Layout */
+  --sidebar-width: 256px;
+  --topbar-height: 72px;
+
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 220ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Base Reset */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+  font-family: var(--font-sans);
+  background-color: var(--color-canvas);
+  color: var(--color-text-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+button, input, select, textarea {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: var(--radius-pill);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}

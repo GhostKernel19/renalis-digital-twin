@@ -73,3 +73,4 @@ data/synthetic/*.csv
 # Machine Learning Artifacts & Environments
 ml/models/
 ml/.venv/
+backend/.venv/

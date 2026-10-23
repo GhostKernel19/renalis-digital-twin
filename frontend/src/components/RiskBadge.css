@@ -1,0 +1,62 @@
+.risk-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: var(--radius-pill);
+  font-weight: 500;
+  white-space: nowrap;
+  letter-spacing: -0.01em;
+  transition: all var(--transition-fast);
+}
+
+.risk-badge.size-md {
+  padding: 3px 10px;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.risk-badge.size-sm {
+  padding: 2px 7px;
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.risk-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* High Risk - Red */
+.risk-badge.risk-high {
+  background-color: var(--color-risk-high-bg);
+  color: var(--color-risk-high-text);
+  border: 1px solid var(--color-risk-high-border);
+}
+.risk-badge.risk-high .risk-dot {
+  background-color: var(--color-risk-high-dot);
+  box-shadow: 0 0 0 2px rgba(217, 45, 32, 0.2);
+}
+
+/* Medium Risk - Amber */
+.risk-badge.risk-medium {
+  background-color: var(--color-risk-med-bg);
+  color: var(--color-risk-med-text);
+  border: 1px solid var(--color-risk-med-border);
+}
+.risk-badge.risk-medium .risk-dot {
+  background-color: var(--color-risk-med-dot);
+  box-shadow: 0 0 0 2px rgba(247, 144, 9, 0.2);
+}
+
+/* Low Risk - Green */
+.risk-badge.risk-low {
+  background-color: var(--color-risk-low-bg);
+  color: var(--color-risk-low-text);
+  border: 1px solid var(--color-risk-low-border);
+}
+.risk-badge.risk-low .risk-dot {
+  background-color: var(--color-risk-low-dot);
+  box-shadow: 0 0 0 2px rgba(18, 183, 106, 0.2);
+}
