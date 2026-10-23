@@ -1,85 +1,69 @@
 /* ==========================================================================
-   RENALIS Design System & Global Styles
+   RENALIS Soft UI / Neumorphism Design System Tokens
    Digital Twin Challenge 2026
-   Theme: Light Theme Only
-   Tokens: Navy #152C3B, Teal #176B63, Blue #5279B9, Canvas #F5F7F8,
-           Surface #FFFFFF, Border #DCE5EA
-   Typography: Inter
+   Accessible Soft UI: 4.5:1 Contrast Minimum, 48px Touch Targets
+   Tokens: Background #E8EDF2, Border #C9D3DC, Primary #176B63, Text #152C3B
    ========================================================================== */
 
 :root {
   /* Brand & Core Palette */
-  --color-navy: #152C3B;
-  --color-navy-dark: #0D1C26;
-  --color-navy-light: #1E3E52;
-  --color-teal: #176B63;
-  --color-teal-hover: #1F7D74;
-  --color-teal-light: #E7F3F1;
-  --color-teal-dark: #0F4943;
-  --color-blue: #5279B9;
-  --color-blue-hover: #43659E;
-  --color-blue-light: #EEF3FA;
-  
-  /* Canvas & Surfaces */
-  --color-canvas: #F5F7F8;
-  --color-surface: #FFFFFF;
-  --color-surface-hover: #F9FBFC;
-  --color-surface-active: #F0F4F7;
-  --color-border: #DCE5EA;
-  --color-border-subtle: #E8EFF3;
-  --color-border-focus: #5279B9;
-
-  /* Typography Colors */
+  --color-bg: #E8EDF2;
+  --color-border: #C9D3DC;
+  --color-border-subtle: #D5DFE8;
   --color-text-primary: #152C3B;
-  --color-text-secondary: #526779;
-  --color-text-muted: #889DAF;
-  --color-text-on-dark: #FFFFFF;
-  --color-text-on-dark-muted: #9BB0C1;
+  --color-text-secondary: #44566A; /* 6.4:1 contrast on #E8EDF2 (WCAG AA > 4.5:1) */
+  --color-text-muted: #5E7287;
+  --color-teal: #176B63;
+  --color-teal-hover: #135A53;
+  --color-teal-active: #0F4943;
+  --color-teal-light: #D8ECE5;
+  --color-teal-light-border: #B8DAD1;
+  --color-white: #FFFFFF;
 
-  /* Clinical Risk Tags (Pills with dot) */
-  --color-risk-high-text: #B42318;
-  --color-risk-high-bg: #FEE4E2;
-  --color-risk-high-border: #FECDCA;
-  --color-risk-high-dot: #D92D20;
+  /* Neumorphic Dual Shadows */
+  /* Raised card: light highlight top-left, darker soft shadow bottom-right */
+  --shadow-raised: 5px 5px 14px rgba(166, 180, 198, 0.5), -5px -5px 14px rgba(255, 255, 255, 0.95);
+  --shadow-raised-sm: 3px 3px 8px rgba(166, 180, 198, 0.4), -3px -3px 8px rgba(255, 255, 255, 0.9);
+  --shadow-raised-lg: 8px 8px 22px rgba(166, 180, 198, 0.55), -8px -8px 22px rgba(255, 255, 255, 0.95);
 
-  --color-risk-med-text: #B54708;
-  --color-risk-med-bg: #FEF0C7;
-  --color-risk-med-border: #FEDF89;
-  --color-risk-med-dot: #F79009;
+  /* Inset shadow for inputs, sunken cards, and pressed / active states */
+  --shadow-inset: inset 2px 2px 5px rgba(166, 180, 198, 0.45), inset -2px -2px 5px rgba(255, 255, 255, 0.9);
+  --shadow-inset-sm: inset 1px 1px 3px rgba(166, 180, 198, 0.4), inset -1px -1px 3px rgba(255, 255, 255, 0.9);
 
-  --color-risk-low-text: #027A48;
-  --color-risk-low-bg: #ECFDF3;
-  --color-risk-low-border: #A6F4C5;
-  --color-risk-low-dot: #12B76A;
+  /* Status Tag Palette: Green / Amber / Red */
+  --tag-green-bg: #D8ECE5;
+  --tag-green-text: #0F5B4E;
+  --tag-green-border: #B8DAD1;
 
-  /* Status Tags */
-  --color-status-pending-text: #B54708;
-  --color-status-pending-bg: #FEF0C7;
-  --color-status-review-text: #175CD3;
-  --color-status-review-bg: #EFF8FF;
-  --color-status-done-text: #027A48;
-  --color-status-done-bg: #ECFDF3;
+  --tag-amber-bg: #FDEED9;
+  --tag-amber-text: #8A4A0A;
+  --tag-amber-border: #F7D4A8;
+
+  --tag-red-bg: #FDE3E0;
+  --tag-red-text: #A6261B;
+  --tag-red-border: #F8BEB8;
 
   /* Typography */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-size-body: 18px;
+  --line-height-body: 1.5;
 
-  /* Sizing & Radii */
-  --radius-xs: 4px;
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 20px;
+  /* Radii */
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 16px;
+  --radius-card: 20px;
   --radius-pill: 9999px;
 
-  /* Box Shadows */
-  --shadow-xs: 0 1px 2px rgba(21, 44, 59, 0.04);
-  --shadow-sm: 0 1px 3px rgba(21, 44, 59, 0.06), 0 1px 2px rgba(21, 44, 59, 0.04);
-  --shadow-md: 0 4px 14px rgba(21, 44, 59, 0.07);
-  --shadow-lg: 0 10px 28px rgba(21, 44, 59, 0.09);
+  /* Accessibility & Touch Targets */
+  --touch-target-min: 48px;
+  --focus-outline-width: 2px;
+  --focus-outline-color: #176B63;
+  --focus-outline-offset: 2px;
 
-  /* Layout */
-  --sidebar-width: 256px;
+  /* Layout Dimensions */
+  --sidebar-width: 260px;
   --topbar-height: 72px;
 
   /* Transitions */
@@ -95,43 +79,145 @@
 }
 
 html, body {
-  height: 100%;
+  min-height: 100%;
   width: 100%;
-  font-family: var(--font-sans);
-  background-color: var(--color-canvas);
+  background-color: var(--color-bg);
   color: var(--color-text-primary);
-  line-height: 1.5;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 #root {
-  min-height: 100%;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
+  background-color: var(--color-bg);
 }
 
-button, input, select, textarea {
-  font: inherit;
+/* Accessible Visible Focus Outline */
+:focus-visible {
+  outline: var(--focus-outline-width) solid var(--focus-outline-color);
+  outline-offset: var(--focus-outline-offset);
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
+/* Selection */
+::selection {
+  background-color: var(--color-teal-light);
+  color: var(--color-teal-active);
 }
 
-/* Scrollbar Styling */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+/* Common Neumorphic Card & Input Classes */
+.soft-card {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-raised);
 }
-::-webkit-scrollbar-track {
-  background: transparent;
+
+.soft-input {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-inset);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  min-height: var(--touch-target-min);
+  padding: 10px 16px;
+  width: 100%;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
-::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: var(--radius-pill);
+
+.soft-input:focus {
+  outline: none;
+  border-color: var(--color-teal);
+  box-shadow: var(--shadow-inset), 0 0 0 2px rgba(23, 107, 99, 0.2);
 }
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-muted);
+
+.soft-button-primary {
+  min-height: var(--touch-target-min);
+  min-width: var(--touch-target-min);
+  padding: 12px 24px;
+  border-radius: var(--radius-card);
+  background: var(--color-teal);
+  color: var(--color-white);
+  border: none;
+  font-family: var(--font-sans);
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 2px 2px 8px rgba(166, 180, 198, 0.45);
+  transition: background-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.soft-button-primary:hover:not(:disabled) {
+  background: var(--color-teal-hover);
+}
+
+.soft-button-primary:active:not(:disabled) {
+  background: var(--color-teal-active);
+  transform: translateY(1px);
+}
+
+.soft-button-secondary {
+  min-height: var(--touch-target-min);
+  min-width: var(--touch-target-min);
+  padding: 12px 24px;
+  border-radius: var(--radius-card);
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  font-family: var(--font-sans);
+  font-size: 17px;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: var(--shadow-raised-sm);
+  transition: background-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
+}
+
+.soft-button-secondary:hover:not(:disabled) {
+  background: #DEE5EB;
+}
+
+.soft-button-secondary:active:not(:disabled) {
+  box-shadow: var(--shadow-inset-sm);
+  transform: translateY(1px);
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Animations */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+/* Larger Text Size (22px) Mode */
+body.text-size-larger {
+  --font-size-body: 22px;
+  font-size: 22px;
+}
+
+body.text-size-larger .soft-input,
+body.text-size-larger .soft-button-primary,
+body.text-size-larger .soft-button-secondary {
+  font-size: 20px;
 }

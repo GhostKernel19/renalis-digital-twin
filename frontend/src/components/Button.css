@@ -1,0 +1,127 @@
+.renalis-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: var(--touch-target-min); /* 48px min touch target */
+  min-width: var(--touch-target-min);
+  padding: 12px 24px;
+  border-radius: var(--radius-card); /* 20px radius */
+  font-family: var(--font-sans);
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all var(--transition-fast);
+  text-decoration: none;
+  user-select: none;
+}
+
+/* Primary Teal */
+.renalis-btn--primary {
+  background-color: var(--color-teal);
+  color: var(--color-white);
+  border-color: var(--color-teal);
+  box-shadow: 2px 3px 8px rgba(23, 107, 99, 0.35);
+}
+
+.renalis-btn--primary:hover:not(:disabled) {
+  background-color: var(--color-teal-hover);
+  border-color: var(--color-teal-hover);
+  box-shadow: 2px 4px 12px rgba(23, 107, 99, 0.45);
+}
+
+.renalis-btn--primary:active:not(:disabled) {
+  background-color: var(--color-teal-active);
+  transform: translateY(1px);
+  box-shadow: inset 2px 2px 4px rgba(0, 0, 0, 0.25);
+}
+
+/* Secondary Neumorphic Raised */
+.renalis-btn--secondary {
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
+  box-shadow: var(--shadow-raised-sm);
+  font-weight: 500;
+}
+
+.renalis-btn--secondary:hover:not(:disabled) {
+  background-color: #DEE5EB;
+  border-color: #BCC7D2;
+}
+
+.renalis-btn--secondary:active:not(:disabled) {
+  box-shadow: var(--shadow-inset-sm);
+  transform: translateY(1px);
+}
+
+/* Outline variant */
+.renalis-btn--outline {
+  background-color: transparent;
+  color: var(--color-teal);
+  border-color: var(--color-teal);
+  box-shadow: none;
+}
+
+.renalis-btn--outline:hover:not(:disabled) {
+  background-color: var(--color-teal-light);
+}
+
+/* Danger variant */
+.renalis-btn--danger {
+  background-color: var(--tag-red-bg);
+  color: var(--tag-red-text);
+  border-color: var(--tag-red-border);
+}
+
+.renalis-btn--danger:hover:not(:disabled) {
+  background-color: #FBD4D0;
+}
+
+/* Ghost variant */
+.renalis-btn--ghost {
+  background-color: transparent;
+  color: var(--color-text-secondary);
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.renalis-btn--ghost:hover:not(:disabled) {
+  background-color: rgba(166, 180, 198, 0.2);
+  color: var(--color-text-primary);
+}
+
+/* Sizes */
+.renalis-btn--sm {
+  min-height: 44px;
+  padding: 8px 16px;
+  font-size: 15px;
+}
+
+.renalis-btn--md {
+  min-height: var(--touch-target-min);
+  padding: 12px 22px;
+  font-size: 17px;
+}
+
+.renalis-btn--lg {
+  min-height: 54px;
+  padding: 14px 28px;
+  font-size: 18px;
+}
+
+/* Disabled */
+.renalis-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.btn-icon-left,
+.btn-icon-right {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}

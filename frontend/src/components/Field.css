@@ -1,0 +1,101 @@
+.renalis-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.renalis-field-label {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.field-required-star {
+  color: var(--tag-red-text);
+}
+
+.renalis-input-wrapper,
+.renalis-select-wrapper {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.renalis-input,
+.renalis-select {
+  width: 100%;
+  min-height: var(--touch-target-min); /* 48px touch target */
+  padding: 10px 16px;
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-inset);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.renalis-input:focus,
+.renalis-select:focus {
+  outline: none;
+  border-color: var(--color-teal);
+  box-shadow: var(--shadow-inset), 0 0 0 2px rgba(23, 107, 99, 0.25);
+}
+
+.renalis-input.has-icon-left {
+  padding-left: 44px;
+}
+
+.renalis-input.has-icon-right {
+  padding-right: 44px;
+}
+
+.input-icon-left {
+  position: absolute;
+  left: 14px;
+  display: inline-flex;
+  align-items: center;
+  pointer-events: none;
+  color: var(--color-text-secondary);
+}
+
+.input-icon-right {
+  position: absolute;
+  right: 14px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-text-secondary);
+}
+
+.renalis-select {
+  appearance: none;
+  padding-right: 42px;
+  cursor: pointer;
+}
+
+.select-arrow {
+  position: absolute;
+  right: 14px;
+  pointer-events: none;
+  color: var(--color-text-secondary);
+  display: inline-flex;
+  align-items: center;
+}
+
+.renalis-field-helper {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+}
+
+.renalis-field-error {
+  font-size: 14px;
+  color: var(--tag-red-text);
+  line-height: 1.4;
+}

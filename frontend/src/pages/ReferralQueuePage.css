@@ -1,0 +1,208 @@
+.referral-queue-page {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  width: 100%;
+}
+
+/* 3 Stat Cards */
+.referral-stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.stat-metric-card {
+  display: flex;
+  align-items: center;
+}
+
+.stat-metric-body {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+}
+
+.stat-number {
+  font-size: 42px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1;
+}
+
+.stat-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+/* Find a referral Filter Card */
+.filter-card {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.filter-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: 2fr 1.5fr 1.5fr;
+  gap: 20px;
+}
+
+.filter-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 4px;
+}
+
+/* Referrals Table */
+.referral-list-header {
+  margin-top: 8px;
+}
+
+.referrals-count-heading {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sort-hint {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.referrals-table-card {
+  display: flex;
+  flex-direction: column;
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.referrals-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.referrals-table th {
+  padding: 16px 20px;
+  background-color: rgba(255, 255, 255, 0.4);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.referrals-table td {
+  padding: 20px 20px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  vertical-align: middle;
+}
+
+.referrals-table tr:last-child td {
+  border-bottom: none;
+}
+
+.patient-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.patient-name {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.patient-id {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.patient-meta {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+}
+
+.kidney-score-val {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.referral-reason-text {
+  font-size: 16px;
+  color: var(--color-text-primary);
+  max-width: 320px;
+  display: block;
+  line-height: 1.4;
+}
+
+.priority-status-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.awaiting-label {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.received-date {
+  font-size: 15px;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+
+.table-pagination-footer {
+  padding: 18px 20px;
+  border-top: 1px solid var(--color-border);
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.referral-page-hint {
+  font-size: 15px;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+@media (max-width: 900px) {
+  .referral-stats-row {
+    grid-template-columns: 1fr;
+  }
+
+  .filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .filter-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

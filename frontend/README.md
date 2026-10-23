@@ -1,136 +1,97 @@
-# RENALIS - Clinical Frontend
-
+# RENALIS - Accessible Soft UI Frontend
+ 
 > **Digital Twin Challenge 2026**  
-> Clinical Overview & Chronic Kidney Disease (CKD) Progression Digital Twin Dashboard.
+> Chronic Kidney Disease (CKD) Computational Digital Twin & Care Coordination Interface.
 
 ---
 
-## ⚠️ Synthetic Data & Clinical Validation Notice
+## ⚠️ Synthetic Data & Clinical Notice
 
-**All data is synthetic and forecasts are not clinically validated.**  
-- Patient demographics, baseline lab panels, longitudinal monthly telemetry, and disease trajectories are 100% synthetically generated for research, prototype demonstration, and algorithmic benchmarking.
-- RENALIS is an investigational software prototype developed for the **Digital Twin Challenge 2026**. It must **not** be used for primary medical diagnosis, patient treatment planning, or acute clinical decisions without certified clinician validation.
-
----
-
-## Tech Stack & Architecture
-
-- **Core**: React 19 + TypeScript (scaffolded with Vite)
-- **Routing**: `react-router-dom` v7 (Navigation shell with dynamic active links)
-- **Charts & Telemetry**: `recharts`
-- **Styling**: Vanilla CSS Design Tokens (Strict Light Theme Only)
-  - Navy: `#152C3B`
-  - Teal: `#176B63`
-  - Blue: `#5279B9`
-  - Canvas: `#F5F7F8`
-  - Surface: `#FFFFFF`
-  - Border: `#DCE5EA`
-  - Typography: `Inter` (Google Fonts)
-  - Clinical Risk Pills: High (Red), Medium (Amber), Low (Green) with circular status dot (`●`)
+> **IMPORTANT: All patient data, vitals, laboratory panels, and progression scores are 100% synthetic.**
+> - All persona records and telemetry are artificially generated research artifacts for the Digital Twin Challenge 2026.
+> - Digital twin trajectory predictions and risk estimations are experimental prototypes and are **NOT clinically validated**. This software must not be used for clinical decision-making, diagnosis, or triage.
+> - **Rule 5 Compliance**: Strictly zero drug names, dosages, or prescriptive treatment advice in the UI.
 
 ---
 
-## Getting Started
+## Design System Tokens (Soft UI / Neumorphism)
+
+The RENALIS frontend implements an accessible soft UI / neumorphic design system with high-contrast accessibility (WCAG AA compliant):
+
+| Token | Value | Description |
+|---|---|---|
+| `--color-bg` | `#E8EDF2` | Neumorphic soft canvas background |
+| `--color-border` | `#C9D3DC` | 1px border on cards and inputs |
+| `--color-text-primary` | `#152C3B` | High contrast body and heading text |
+| `--color-text-secondary` | `#44566A` | Accessible secondary text (contrast ratio > 4.5:1) |
+| `--color-teal` | `#176B63` | Primary brand accent with white text |
+| `--tag-green-bg` / `text` | `#D8ECE5` / `#0F5B4E` | Routine / Complete status tags with icon & word |
+| `--tag-amber-bg` / `text` | `#FDEED9` / `#8A4A0A` | Current step / Moderate status tags with icon & word |
+| `--tag-red-bg` / `text` | `#FDE3E0` / `#A6261B` | Urgent / High risk status tags with icon & word |
+| `--shadow-raised` | Dual Shadow | Soft highlight top-left (`rgba(255,255,255,0.95)`), darker bottom-right (`rgba(166,180,198,0.5)`) |
+| `--shadow-inset` | Inset Shadow | Sunken depth for form inputs and pressed / active states |
+| Typography | `Inter` (Google Fonts) | Base font size 18px (with 22px larger mode), line height 1.5 |
+| Radii | `20px` (`--radius-card`) | Consistent rounded corners |
+| Touch Target | `48px` minimum | Accessible touch targets for buttons, inputs, and toggles |
+| Focus Outlines | `2px solid #176B63` | Visible focus outline for keyboard accessibility |
+
+---
+
+## Roles & Navigation
+
+- **View as Switch**: Located in the top bar (`Patient` vs `Care team`), state persisted in `localStorage`.
+- **Patient Role (`YOUR CARE`)**:
+  - **Patient Picker**: Searchable synthetic ID selector in the TopBar (populated dynamically from `GET /patients`), saved in `localStorage`.
+  - **Routes**:
+    1. `/` (Home)
+    2. `/log-today` (Log today)
+    3. `/my-kidney-health` (My kidney health)
+    4. `/language-help` (Language & help)
+- **Care Team Role (`CARE TEAM`)**:
+  - **Routes**:
+    1. `/patients` (Cohort directory & search)
+    2. `/patients/:id` (Clinician patient view)
+    3. `/patient-intake` (3-step intake workflow)
+    4. `/referral-queue` (Care coordination referrals)
+    5. `/follow-ups` (Appointment management)
+    6. `/reports` (Cohort analytics & health diagnostics)
+- **Responsive Navigation**: On viewports below `900px`, the sidebar automatically transforms into an accessible fixed bottom navigation bar, and multi-column grids collapse into a single column.
+
+---
+
+## 10 Active Pages Overview
+
+| # | Route | Mode | Page | Description & API Integration |
+|---|---|---|---|---|
+| 1 | `/` | Patient | `OverviewPage` | Kidney score, risk tier, and plain trend sentence from `GET /patients/{id}/twin`; next scheduled appointment from `GET /follow-ups`; today's log summary from `GET /patients/{id}/logs`. Friendly empty state when no data exists. |
+| 2 | `/log-today` | Patient | `LogTodayPage` | Daily vitals form that `POST`s to `/patients/{id}/logs`. Selecting "None of these" clears other symptoms. Displays high-visibility urgent banner (red, icon + text, Call 112) when `urgent=true`. Shows save confirmation and recent logs. |
+| 3 | `/my-kidney-health` | Patient | `MyKidneyHealthPage` | Recharts longitudinal chart with solid measured line, clearly visible dotted 3-month estimate line, and light 95% uncertainty band. Includes plain-language progression summary, top 3 drivers, and "An estimate, not a diagnosis" card. |
+| 4 | `/language-help` | Patient | `LanguageHelpPage` | Switcher for English, हिंदी, and मराठी translating all patient screens via `src/i18n` dictionaries. Text size toggle (18px and 22px) saved in `localStorage` scaling the entire UI. Emergency 112 card and demo health worker card. |
+| 5 | `/patients` | Care Team | `PatientsPage` | Searchable and filterable table from `GET /patients` with risk tags and pagination. Row click navigates to clinician view. |
+| 6 | `/patients/:id` | Care Team | `ClinicianPatientViewPage` | Kidney score trajectory with forecast line and uncertainty band, multi-metric BP/adherence/steps trends, top 3 drivers, model basis, recent logs, and action buttons: "Mark reviewed" (`PATCH /referrals`) and "Request repeat test" (`POST /follow-ups`). |
+| 7 | `/patient-intake` | Care Team | `PatientIntakePage` | 3-step intake form submitting `POST /patients`. Calculates 2021 CKD-EPI eGFR, displays twin result and basis, with post-intake options to create a referral (Routine/Urgent) and follow-up. |
+| 8 | `/referral-queue` | Care Team | `ReferralQueuePage` | Stat tiles from `GET /stats`, priority and status filters, search, table from `GET /referrals`. "Open" opens the clinician patient view. |
+| 9 | `/follow-ups` | Care Team | `FollowUpsPage` | Lists scheduled care appointments from `GET /follow-ups`. Supports scheduling generic appointments (`POST /follow-ups`) and marking Completed/Cancelled (`PATCH /follow-ups/{id}`). |
+| 10 | `/reports` | Care Team | `ReportsPage` | Visual charts from `GET /stats` (risk tier distribution, referrals by status, follow-ups) and digital twin model diagnostics from `GET /health`. |
+
+---
+
+## Running the Application
 
 ### 1. Prerequisites
 - Node.js (v18+ or v20+)
 - npm (v9+)
-- RENALIS FastAPI backend running locally (see [Backend Instructions](../backend/README.md))
+- Python FastAPI backend running at `http://127.0.0.1:8000`
 
-### 2. Installation
-Navigate into the `frontend/` directory and install dependencies:
-
+### 2. Start Development Server
 ```bash
 cd frontend
 npm install
-```
-
-### 3. Environment Configuration
-The frontend connects to the FastAPI backend using `VITE_API_URL`.  
-Copy the example environment file:
-
-```bash
-cp .env.example .env
-```
-
-Contents of `.env.example`:
-```ini
-VITE_API_URL=http://127.0.0.1:8000
-```
-
-### 4. Running the Development Server
-Start the local Vite development server:
-
-```bash
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173) in your browser. The backend CORS policy is preconfigured to accept requests from this origin.
-
-### 5. Production Build & Type Checking
-To validate types and bundle for production:
-
+### 3. Build & Validate
 ```bash
 npm run build
 ```
-
-The compiled output will be written to `frontend/dist/`. To preview the production bundle locally:
-
-```bash
-npm run preview
-```
-
----
-
-## Backend Endpoints Used
-
-The frontend interacts with the FastAPI backend via `src/api/client.ts`:
-
-| Method | Endpoint | Description | Dashboard Usage |
-|---|---|---|---|
-| `GET` | `/health` | Backend status & ML model availability | Service health checks |
-| `GET` | `/patients` | Paginated synthetic patient cohort list | Computes **Total Patients** stat card & populates **Recent Patients** table |
-| `GET` | `/patients/{id}` | Longitudinal telemetry (months 1–12) for a specific patient | Detailed twin inspection & trajectory analysis |
-| `GET` | `/referrals` | Multidisciplinary referral queue | Computes **Referrals Pending** stat card |
-| `POST` | `/referrals` | Submit a new referral record | Care team workflow triage |
-| `POST` | `/assess-patient` | Evaluates 3-month risk of >10% eGFR decline | Progression simulation & KDIGO risk tiering |
-
-> **Note on Stat Cards:**  
-> In accordance with clinical system requirements, metrics without an active backend API source (such as *Pending Assessments* and *Follow-ups Due*) display an intentional `"–"` placeholder rather than simulated or fabricated values.
-
----
-
-## Project Structure
-
-```
-frontend/
-├── .env.example             # Base API environment template
-├── .gitignore               # Ignores node_modules, dist, .env
-├── index.html               # Main HTML entry with Inter font
-├── package.json             # Minimal dependencies (React, react-router-dom, recharts)
-├── tsconfig.json            # TypeScript configuration
-├── vite.config.ts           # Vite configuration
-├── README.md                # Frontend documentation
-└── src/
-    ├── main.tsx             # Root React DOM entry
-    ├── App.tsx              # React Router route definitions
-    ├── index.css            # Global CSS variables, design tokens, resets
-    ├── api/
-    │   └── client.ts        # Fully typed FastAPI HTTP client
-    ├── components/
-    │   ├── Layout.tsx       # Sidebar + TopBar + Page shell
-    │   ├── Layout.css
-    │   ├── Sidebar.tsx      # Dark teal-navy brand navigation & role selector
-    │   ├── Sidebar.css
-    │   ├── TopBar.tsx       # Search, date, notifications, Synthetic Data pill
-    │   ├── TopBar.css
-    │   ├── RiskBadge.tsx    # KDIGO High/Medium/Low pill with colored dot
-    │   └── RiskBadge.css
-    ├── pages/
-    │   ├── OverviewPage.tsx # Clinical Overview screen (Stats, Table, Follow-ups)
-    │   ├── OverviewPage.css
-    │   ├── ComingSoonPage.tsx # Modular placeholder for non-overview routes
-    │   └── ComingSoonPage.css
-    └── utils/
-        └── patientNames.ts  # Deterministic synthetic names & KDIGO risk helpers
-```
+Type checks via `tsc -b` and bundles using Vite with zero errors.

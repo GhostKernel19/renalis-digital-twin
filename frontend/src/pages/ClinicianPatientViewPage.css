@@ -1,0 +1,97 @@
+.clinician-view-page {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  width: 100%;
+}
+
+.clinician-hero-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.clinician-hero-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.clinician-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-md);
+  background-color: var(--color-teal);
+  color: var(--color-white);
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 2px 2px 8px rgba(23, 107, 99, 0.35);
+  flex-shrink: 0;
+}
+
+.clinician-hero-info h2 {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.clinician-hero-meta {
+  font-size: 15px;
+  color: var(--color-text-secondary);
+  margin-top: 4px;
+}
+
+.clinician-actions-cluster {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.clinician-charts-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 24px;
+  width: 100%;
+}
+
+.telemetry-chart-box {
+  width: 100%;
+  height: 280px;
+  margin-top: 12px;
+}
+
+.clinician-drivers-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.action-status-toast {
+  padding: 12px 18px;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  animation: fadeIn 150ms ease-out;
+}
+
+.toast-success {
+  background-color: var(--tag-green-bg);
+  border: 1px solid var(--tag-green-border);
+  color: var(--tag-green-text);
+}
+
+@media (max-width: 900px) {
+  .clinician-charts-grid {
+    grid-template-columns: 1fr;
+  }
+}

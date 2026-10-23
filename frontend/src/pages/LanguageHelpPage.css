@@ -1,0 +1,222 @@
+.language-help-page {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  width: 100%;
+}
+
+.language-help-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 24px;
+}
+
+.left-stack,
+.right-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.card-section-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: 8px;
+}
+
+.card-section-desc {
+  font-size: 16px;
+  color: var(--color-text-secondary);
+  margin-bottom: 18px;
+}
+
+/* Language Selection Options */
+.lang-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.lang-option-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-raised-sm);
+  cursor: pointer;
+  text-align: left;
+  transition: all var(--transition-fast);
+  width: 100%;
+  min-height: 56px;
+}
+
+.lang-option-card:hover:not(.is-selected) {
+  background-color: #DEE5EB;
+}
+
+.lang-option-card.is-selected {
+  background-color: #D8ECE5;
+  border-color: #A6D0C5;
+  box-shadow: var(--shadow-inset-sm);
+}
+
+.lang-option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.lang-native {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.lang-sub {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+}
+
+.lang-check-circle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lang-note {
+  font-size: 15px;
+  color: var(--color-text-secondary);
+  margin-top: 14px;
+}
+
+/* Text Size Card */
+.text-size-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.text-size-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--touch-target-min);
+  padding: 12px 20px;
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  font-family: var(--font-sans);
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  box-shadow: var(--shadow-raised-sm);
+  transition: all var(--transition-fast);
+}
+
+.text-size-btn:hover:not(.is-active) {
+  background-color: #DEE5EB;
+}
+
+.text-size-btn.is-active {
+  box-shadow: var(--shadow-inset-sm);
+  font-weight: 700;
+  border-color: #B8DAD1;
+  background-color: #DFECE8;
+  color: var(--color-teal);
+}
+
+.preview-sample {
+  font-size: 15px;
+  color: var(--color-text-secondary);
+  transition: font-size var(--transition-fast);
+}
+
+.preview-large {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+/* Worker Contact Card */
+.worker-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.worker-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background-color: var(--color-teal-light);
+  color: var(--color-teal);
+  font-size: 18px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-teal-light-border);
+  flex-shrink: 0;
+}
+
+.worker-name {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.worker-languages {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  display: block;
+}
+
+.worker-support-text {
+  font-size: 16px;
+  color: var(--color-text-primary);
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+
+.worker-schedule {
+  margin-bottom: 16px;
+  font-size: 16px;
+  color: var(--color-text-primary);
+}
+
+.contact-demo-disclaimer {
+  font-size: 14px;
+  color: var(--color-text-muted);
+  margin-top: 10px;
+}
+
+/* Emergency Card */
+.emergency-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.emergency-text {
+  font-size: 16px;
+  color: var(--color-text-primary);
+  line-height: 1.5;
+  margin-bottom: 4px;
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+@media (max-width: 900px) {
+  .language-help-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,115 @@
+.patients-page {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  width: 100%;
+}
+
+.patients-filter-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.patients-controls-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 20px;
+  align-items: flex-end;
+}
+
+.patients-table-card {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.patients-table-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.patients-count-badge {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  background-color: rgba(255, 255, 255, 0.5);
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border);
+}
+
+.patients-table-wrapper {
+  overflow-x: auto;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-bg);
+  box-shadow: var(--shadow-inset-sm);
+}
+
+.patients-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 15px;
+}
+
+.patients-table th {
+  padding: 14px 18px;
+  background-color: rgba(255, 255, 255, 0.5);
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  font-size: 14px;
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.patients-table td {
+  padding: 14px 18px;
+  color: var(--color-text-primary);
+  border-bottom: 1px solid var(--color-border-subtle);
+  vertical-align: middle;
+}
+
+.patients-table tr.patient-row-clickable {
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.patients-table tr.patient-row-clickable:hover {
+  background-color: rgba(23, 107, 99, 0.06);
+}
+
+.patient-id-cell {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--color-teal);
+}
+
+.pagination-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 10px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.pagination-info {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+}
+
+.pagination-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (max-width: 900px) {
+  .patients-controls-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,95 +1,182 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { useApp, type AppLanguage } from '../context/AppContext';
 import './TopBar.css';
 
-interface TopBarProps {
-  onSearch?: (query: string) => void;
-}
+export const TopBar: React.FC = () => {
+  const {
+    viewMode,
+    setViewMode,
+    language,
+    setLanguage,
+    patientId,
+    setPatientId,
+    availablePatientIds,
+    t,
+  } = useApp();
 
-export const TopBar: React.FC<TopBarProps> = ({ onSearch }) => {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [pickerSearch, setPickerSearch] = useState('');
+  const pickerRef = useRef<HTMLDivElement>(null);
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
-    if (onSearch) {
-      onSearch(e.target.value);
-    }
+  const handleLanguageToggle = (lang: AppLanguage) => {
+    setLanguage(lang);
   };
 
-  // Format current date e.g. "Saturday, Oct 17, 2026"
-  const [formattedDate] = useState(() =>
-    new Intl.DateTimeFormat('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    }).format(new Date())
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+        setIsPickerOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
+
+  const filteredPatientIds = availablePatientIds.filter((id) =>
+    id.toLowerCase().includes(pickerSearch.toLowerCase().trim())
   );
 
   return (
-    <header className="topbar">
-      {/* Search Input */}
-      <div className="topbar-search-container">
-        <div className="topbar-search-icon">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    <header className="renalis-topbar" role="banner">
+      {/* Left: Brand Logo & Title */}
+      <div className="topbar-brand">
+        <div className="topbar-logo-icon" aria-hidden="true">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20.42 4.58a5.4 5.4 0 0 0-7.65 0l-.77.78-.77-.78a5.4 5.4 0 0 0-7.65 7.65l.77.78L12 21l7.65-7.99.77-.78a5.4 5.4 0 0 0 0-7.65z" />
+            <path d="M3.5 12h4l2-3 3 6 2-3h5" />
           </svg>
         </div>
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={handleSearchChange}
-          placeholder="Search patients by ID, name, or clinical condition..."
-          className="topbar-search-input"
-        />
-        {searchQuery && (
-          <button
-            type="button"
-            className="topbar-search-clear"
-            onClick={() => {
-              setSearchQuery('');
-              if (onSearch) onSearch('');
-            }}
-            aria-label="Clear search"
-          >
-            ×
-          </button>
-        )}
+        <span className="topbar-brand-name">RENALIS</span>
       </div>
 
-      {/* Right Controls */}
-      <div className="topbar-actions">
-        {/* Synthetic Data Notice Pill */}
-        <div className="topbar-synthetic-pill" title="All patient records and outcomes are 100% synthetic for the Digital Twin Challenge 2026.">
-          <span className="synthetic-dot" />
-          <span className="synthetic-label">Synthetic Cohort</span>
-          <span className="synthetic-tag">Non-Clinical</span>
+      {/* Center/Right Controls */}
+      <div className="topbar-controls">
+        {/* View Mode Toggle: Patient / Care team */}
+        <div className="topbar-view-mode-wrapper">
+          <span className="view-mode-label">{t.viewAs}</span>
+          <div className="topbar-view-mode-toggle" role="radiogroup" aria-label="View as role">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={viewMode === 'patient'}
+              className={`view-mode-btn ${viewMode === 'patient' ? 'is-active' : ''}`}
+              onClick={() => setViewMode('patient')}
+            >
+              {t.rolePatient}
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={viewMode === 'care-team'}
+              className={`view-mode-btn ${viewMode === 'care-team' ? 'is-active' : ''}`}
+              onClick={() => setViewMode('care-team')}
+            >
+              {t.roleCareTeam}
+            </button>
+          </div>
         </div>
 
-        {/* Current Date Display */}
-        <div className="topbar-date">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-            <line x1="16" y1="2" x2="16" y2="6" />
-            <line x1="8" y1="2" x2="8" y2="6" />
-            <line x1="3" y1="10" x2="21" y2="10" />
-          </svg>
-          <span>{formattedDate}</span>
+        {/* Patient Picker (Visible in Patient Mode) */}
+        {viewMode === 'patient' && (
+          <div className="topbar-patient-picker" ref={pickerRef}>
+            <button
+              type="button"
+              className="patient-picker-trigger"
+              onClick={() => setIsPickerOpen(!isPickerOpen)}
+              aria-expanded={isPickerOpen}
+              aria-haspopup="listbox"
+              title="Select synthetic patient ID"
+            >
+              <span className="patient-picker-label">ID:</span>
+              <strong className="patient-picker-id">{patientId}</strong>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+
+            {isPickerOpen && (
+              <div className="patient-picker-dropdown" role="listbox">
+                <div className="patient-picker-search-box">
+                  <input
+                    type="text"
+                    className="patient-picker-search-input"
+                    placeholder="Search synthetic ID..."
+                    value={pickerSearch}
+                    onChange={(e) => setPickerSearch(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                <div className="patient-picker-list">
+                  {filteredPatientIds.length > 0 ? (
+                    filteredPatientIds.slice(0, 30).map((id) => (
+                      <button
+                        key={id}
+                        type="button"
+                        role="option"
+                        aria-selected={id === patientId}
+                        className={`patient-picker-item ${id === patientId ? 'is-selected' : ''}`}
+                        onClick={() => {
+                          setPatientId(id);
+                          setIsPickerOpen(false);
+                          setPickerSearch('');
+                        }}
+                      >
+                        <span>{id}</span>
+                        {id === patientId && <span className="check-indicator">✓</span>}
+                      </button>
+                    ))
+                  ) : (
+                    <div className="patient-picker-empty">No synthetic IDs match "{pickerSearch}"</div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Language Switch: English / हिंदी / मराठी */}
+        <div className="topbar-language-switch" aria-label="Select language">
+          <button
+            type="button"
+            className={`lang-btn ${language === 'en' ? 'is-selected' : ''}`}
+            onClick={() => handleLanguageToggle('en')}
+            aria-label="English"
+          >
+            English
+          </button>
+          <span className="lang-separator" aria-hidden="true">/</span>
+          <button
+            type="button"
+            className={`lang-btn ${language === 'hi' ? 'is-selected' : ''}`}
+            onClick={() => handleLanguageToggle('hi')}
+            aria-label="Hindi"
+          >
+            हिंदी
+          </button>
+          <span className="lang-separator" aria-hidden="true">/</span>
+          <button
+            type="button"
+            className={`lang-btn ${language === 'mr' ? 'is-selected' : ''}`}
+            onClick={() => handleLanguageToggle('mr')}
+            aria-label="Marathi"
+          >
+            मराठी
+          </button>
         </div>
 
-        {/* Notifications Bell */}
-        <button
-          type="button"
-          className="topbar-icon-button"
-          aria-label="Notifications"
-          title="Care alerts & pending reviews"
+        {/* User Chip */}
+        <div
+          className="topbar-user-chip"
+          title={viewMode === 'patient' ? `Active Synthetic Patient: ${patientId}` : 'Active Care Team View'}
         >
-          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-          </svg>
-          <span className="topbar-bell-badge" />
-        </button>
+          <div className={`user-chip-avatar ${viewMode === 'patient' ? 'avatar-patient' : 'avatar-careteam'}`}>
+            {viewMode === 'patient' ? 'ID' : 'CT'}
+          </div>
+          <span className="user-chip-name">
+            {viewMode === 'patient' ? `Patient ${patientId}` : t.roleCareTeam}
+          </span>
+        </div>
       </div>
     </header>
   );

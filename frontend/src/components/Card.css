@@ -1,0 +1,44 @@
+.renalis-card {
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  transition: box-shadow var(--transition-fast), border-color var(--transition-fast);
+  color: var(--color-text-primary);
+}
+
+/* Raised Dual Shadow (Light top-left, darker bottom-right) */
+.renalis-card--raised {
+  box-shadow: var(--shadow-raised);
+}
+
+.renalis-card--raised:hover {
+  box-shadow: 6px 6px 16px rgba(166, 180, 198, 0.55), -6px -6px 16px rgba(255, 255, 255, 0.98);
+}
+
+/* Inset Neumorphic Shadow */
+.renalis-card--inset {
+  box-shadow: var(--shadow-inset);
+  background-color: #E2E8EE;
+}
+
+/* Flat / Border only */
+.renalis-card--flat {
+  box-shadow: none;
+}
+
+/* Padding sizes */
+.renalis-card--pad-none {
+  padding: 0;
+}
+
+.renalis-card--pad-sm {
+  padding: 16px;
+}
+
+.renalis-card--pad-md {
+  padding: 24px;
+}
+
+.renalis-card--pad-lg {
+  padding: 32px;
+}

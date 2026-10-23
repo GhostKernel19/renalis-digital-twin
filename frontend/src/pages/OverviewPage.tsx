@@ -1,449 +1,422 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
-  getPatients,
-  getReferrals,
-  type Patient,
-  type Referral,
+  getPatientTwin,
+  getPatientLogs,
+  getFollowUps,
+  API_BASE_URL,
+  type TwinResultResponse,
+  type DailyLogResponse,
+  type FollowUp,
 } from '../api/client';
-import { RiskBadge, type RiskLevel } from '../components/RiskBadge';
-import {
-  getPatientDisplayName,
-  getPatientRiskLevel,
-} from '../utils/patientNames';
+import { Card } from '../components/Card';
+import { Button } from '../components/Button';
+import { StatusTag } from '../components/StatusTag';
+import { PageHeader } from '../components/PageHeader';
+import { DemoBanner } from '../components/DemoBanner';
+import { useApp } from '../context/AppContext';
 import './OverviewPage.css';
 
 export const OverviewPage: React.FC = () => {
-  const [patients, setPatients] = useState<Patient[]>([]);
-  const [totalPatients, setTotalPatients] = useState<number | null>(null);
-  const [referrals, setReferrals] = useState<Referral[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const { patientId, t } = useApp();
 
-  const handleRefresh = async () => {
+  const [twin, setTwin] = useState<TwinResultResponse | null>(null);
+  const [logs, setLogs] = useState<DailyLogResponse[] | null>(null);
+  const [followUps, setFollowUps] = useState<FollowUp[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [networkError, setNetworkError] = useState<string | null>(null);
+
+  const fetchData = useCallback(async () => {
     setLoading(true);
-    setError(null);
+    setNetworkError(null);
+
     try {
-      const [patientsRes, referralsRes] = await Promise.all([
-        getPatients(10, 0),
-        getReferrals(),
+      const [twinRes, logsRes, followRes] = await Promise.allSettled([
+        getPatientTwin(patientId),
+        getPatientLogs(patientId),
+        getFollowUps({ patient_id: patientId }),
       ]);
 
-      setPatients(patientsRes.patients || []);
-      setTotalPatients(patientsRes.total ?? patientsRes.count ?? patientsRes.patients.length);
-      setReferrals(referralsRes || []);
+      const isTwinNetworkErr =
+        twinRes.status === 'rejected' &&
+        (twinRes.reason?.message?.includes('Failed to fetch') ||
+          twinRes.reason?.name === 'TypeError');
+
+      if (isTwinNetworkErr) {
+        setNetworkError(
+          `Cannot connect to the RENALIS backend at ${API_BASE_URL}. The server may be offline.`
+        );
+      }
+
+      if (twinRes.status === 'fulfilled') {
+        setTwin(twinRes.value);
+      } else {
+        setTwin(null);
+      }
+
+      if (logsRes.status === 'fulfilled') {
+        setLogs(logsRes.value);
+      } else {
+        setLogs(null);
+      }
+
+      if (followRes.status === 'fulfilled') {
+        setFollowUps(followRes.value);
+      } else {
+        setFollowUps([]);
+      }
     } catch (err: any) {
-      console.error('Failed to load overview data:', err);
-      setError(
-        err.message || 'Unable to connect to the RENALIS FastAPI backend service.'
+      console.error('Failed to load patient twin data:', err);
+      setNetworkError(
+        err?.message || `Cannot connect to the backend server at ${API_BASE_URL}.`
       );
     } finally {
       setLoading(false);
     }
-  };
+  }, [patientId]);
 
   useEffect(() => {
-    let ignore = false;
+    fetchData();
+  }, [fetchData]);
 
-    async function loadInitial() {
-      try {
-        const [patientsRes, referralsRes] = await Promise.all([
-          getPatients(10, 0),
-          getReferrals(),
-        ]);
+  // Find next scheduled follow-up
+  const nextScheduledFollowUp = followUps.find((f) => f.status === 'Scheduled');
 
-        if (!ignore) {
-          setPatients(patientsRes.patients || []);
-          setTotalPatients(patientsRes.total ?? patientsRes.count ?? patientsRes.patients.length);
-          setReferrals(referralsRes || []);
-        }
-      } catch (err: any) {
-        if (!ignore) {
-          console.error('Failed to load overview data:', err);
-          setError(
-            err.message || 'Unable to connect to the RENALIS FastAPI backend service.'
-          );
-        }
-      } finally {
-        if (!ignore) {
-          setLoading(false);
-        }
-      }
-    }
+  // Determine latest daily log entry
+  const latestLog = logs && logs.length > 0 ? logs[0] : null;
 
-    loadInitial();
-    return () => {
-      ignore = true;
-    };
-  }, []);
-
-  // Compute pending referrals count from API
-  const pendingReferralsCount = referrals.filter(
-    (r) => r.status?.toLowerCase() === 'pending'
-  ).length;
-
-  // Format stage from eGFR
-  const getCkdStage = (egfr: number): string => {
-    if (egfr >= 90) return 'G1 (Normal)';
-    if (egfr >= 60) return 'G2 (Mild)';
-    if (egfr >= 45) return 'G3a (Moderate)';
-    if (egfr >= 30) return 'G3b (Mod-Severe)';
-    if (egfr >= 15) return 'G4 (Severe)';
-    return 'G5 (Failure)';
+  // Format risk tag variant
+  const getRiskVariant = (tier?: string) => {
+    if (tier === 'High') return 'red';
+    if (tier === 'Medium') return 'amber';
+    return 'green';
   };
 
   return (
-    <div className="overview-page">
-      {/* Header Greeting */}
-      <div className="overview-header">
-        <div>
-          <h1 className="overview-title">Clinical Overview</h1>
-          <p className="overview-subtitle">
-            Longitudinal CKD digital twin telemetry, progression alerts, and care coordination.
-          </p>
-        </div>
-        <div className="overview-header-actions">
-          <button
-            type="button"
-            onClick={handleRefresh}
-            className="overview-refresh-btn"
-            disabled={loading}
-            title="Refresh clinical data"
-          >
-            <svg
-              className={loading ? 'spinning' : ''}
-              width="15"
-              height="15"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <polyline points="23 4 23 10 17 10" />
-              <polyline points="1 20 1 14 7 14" />
-              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-            </svg>
-            <span>{loading ? 'Refreshing...' : 'Refresh'}</span>
-          </button>
-        </div>
-      </div>
+    <div className="patient-home-page">
+      {/* Disclaimer Banner */}
+      <DemoBanner text={t.demoNotice} />
 
-      {/* Error State Banner */}
-      {error && (
-        <div className="overview-error-banner" role="alert">
-          <div className="overview-error-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      {/* Page Header */}
+      <PageHeader
+        title={t.homeTitle}
+        subtitle={`${t.homeSubtitle} · ${patientId}`}
+        actions={
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={fetchData}
+            isLoading={loading}
+            iconLeft={
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="23 4 23 10 17 10" />
+                <polyline points="1 20 1 14 7 14" />
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+              </svg>
+            }
+          >
+            {loading ? t.refreshing : t.refresh}
+          </Button>
+        }
+      />
+
+      {/* Network Error State */}
+      {networkError && (
+        <Card variant="raised" padding="md" className="backend-offline-card">
+          <div className="offline-icon-wrapper" aria-hidden="true">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#A6261B" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10" />
               <line x1="12" y1="8" x2="12" y2="12" />
               <line x1="12" y1="16" x2="12.01" y2="16" />
             </svg>
           </div>
-          <div className="overview-error-content">
-            <h2 className="overview-error-title">Backend Service Not Reachable</h2>
-            <p className="overview-error-message">
-              Cannot connect to the RENALIS backend at <code>http://127.0.0.1:8000</code>.
+          <div className="offline-content">
+            <h2 className="offline-title">{t.serverOfflineTitle}</h2>
+            <p className="offline-desc">
+              Unable to reach the RENALIS FastAPI backend at <code>{API_BASE_URL}</code>.
             </p>
-            <div className="overview-error-steps">
-              <strong>How to start the backend:</strong>
+            <div className="offline-instructions">
+              <strong>How to start the server:</strong>
               <ol>
-                <li>Open a new terminal in the project directory: <code>cd backend</code></li>
-                <li>Activate virtual environment: <code>.\.venv\Scripts\activate</code> (Windows) or <code>source .venv/bin/activate</code> (Mac/Linux)</li>
-                <li>Start FastAPI server: <code>uvicorn app.main:app --reload</code></li>
+                <li>Open a terminal in the project directory: <code>cd backend</code></li>
+                <li>
+                  Activate the virtual environment:
+                  <br />
+                  <code>.\.venv\Scripts\activate</code> (Windows PowerShell) or <code>source .venv/bin/activate</code> (macOS/Linux)
+                </li>
+                <li>
+                  Launch the FastAPI server: <code>uvicorn app.main:app --reload</code>
+                </li>
               </ol>
             </div>
-            <button type="button" onClick={handleRefresh} className="overview-retry-btn">
-              Retry Connection
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* 4 Stat Cards */}
-      <div className="overview-stats-grid">
-        {/* Card 1: Total Patients */}
-        <div className="stat-card">
-          <div className="stat-card-header">
-            <span className="stat-card-title">Total Patients</span>
-            <div className="stat-icon-wrapper icon-teal">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-              </svg>
+            <div className="offline-actions">
+              <Button variant="primary" size="sm" onClick={fetchData}>
+                {t.retry}
+              </Button>
             </div>
           </div>
-          <div className="stat-card-body">
-            <span className="stat-card-value">
-              {loading && totalPatients === null ? (
-                <span className="stat-placeholder-pulse" />
-              ) : totalPatients !== null ? (
-                totalPatients.toLocaleString()
+        </Card>
+      )}
+
+      {/* Top 3 Metric Cards: Kidney Score, Latest Blood Pressure, Next Follow-up */}
+      <div className="patient-metrics-row stats-cards-row">
+        {/* Card 1: Kidney Score */}
+        <Card variant="raised" padding="md" className="metric-card">
+          <div className="metric-card-header">
+            <span className="metric-label">{t.kidneyScoreLabel}</span>
+            {twin ? (
+              <StatusTag
+                variant={getRiskVariant(twin.tier)}
+                label={`${twin.tier} Risk · ${twin.ckd_stage.split(' ')[0]}`}
+              />
+            ) : (
+              <StatusTag variant="amber" label={loading ? t.loading : 'Awaiting data'} />
+            )}
+          </div>
+          <div className="metric-card-body">
+            <span className="metric-value">
+              {loading ? (
+                <span className="metric-skeleton spinning">...</span>
+              ) : twin?.latest_kidney_score != null ? (
+                twin.latest_kidney_score
               ) : (
                 '–'
               )}
             </span>
-            <span className="stat-card-subtext">Active synthetic cohort</span>
+            <span className="metric-unit">mL/min/1.73 m²</span>
           </div>
-        </div>
+          <div className="metric-card-footer">
+            <span className="metric-subtext">
+              {twin?.estimated_3m_egfr_trend?.summary || 'Trajectory projection computed by digital twin model.'}
+            </span>
+          </div>
+        </Card>
 
-        {/* Card 2: Pending Assessments (No API source yet -> show "–") */}
-        <div className="stat-card">
-          <div className="stat-card-header">
-            <span className="stat-card-title">Pending Assessments</span>
-            <div className="stat-icon-wrapper icon-blue">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
-                <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
-                <path d="M9 12h6" />
-                <path d="M9 16h6" />
-              </svg>
-            </div>
+        {/* Card 2: Blood Pressure / Daily Vitals */}
+        <Card variant="raised" padding="md" className="metric-card">
+          <div className="metric-card-header">
+            <span className="metric-label">{t.latestBpLabel}</span>
+            {latestLog ? (
+              <StatusTag variant="green" label="Recorded" />
+            ) : (
+              <StatusTag variant="amber" label="Pending" />
+            )}
           </div>
-          <div className="stat-card-body">
-            <span className="stat-card-value">–</span>
-            <span className="stat-card-subtext">Awaiting month 9 lab telemetry</span>
-          </div>
-        </div>
-
-        {/* Card 3: Referrals Pending (Computed from GET /referrals) */}
-        <div className="stat-card">
-          <div className="stat-card-header">
-            <span className="stat-card-title">Referrals Pending</span>
-            <div className="stat-icon-wrapper icon-amber">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                <line x1="12" y1="9" x2="12" y2="13" />
-                <line x1="12" y1="17" x2="12.01" y2="17" />
-              </svg>
-            </div>
-          </div>
-          <div className="stat-card-body">
-            <span className="stat-card-value">
-              {loading && totalPatients === null ? (
-                <span className="stat-placeholder-pulse" />
+          <div className="metric-card-body">
+            <span className="metric-value">
+              {loading ? (
+                <span className="metric-skeleton spinning">...</span>
+              ) : latestLog ? (
+                `${latestLog.systolic} / ${latestLog.diastolic}`
               ) : (
-                pendingReferralsCount
+                '–'
               )}
             </span>
-            <span className="stat-card-subtext">Requires care team triage</span>
+            <span className="metric-unit">mmHg</span>
           </div>
-        </div>
+          <div className="metric-card-footer">
+            <span className="metric-subtext">
+              {latestLog
+                ? `Logged ${latestLog.created_at.split('T')[0]} · ${latestLog.steps.toLocaleString()} steps`
+                : 'No blood pressure recorded yet today'}
+            </span>
+          </div>
+        </Card>
 
-        {/* Card 4: Follow-ups Due (No API source yet -> show "–") */}
-        <div className="stat-card">
-          <div className="stat-card-header">
-            <span className="stat-card-title">Follow-ups Due</span>
-            <div className="stat-icon-wrapper icon-navy">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10" />
-                <polyline points="12 6 12 12 16 14" />
-              </svg>
-            </div>
+        {/* Card 3: Next Follow-Up */}
+        <Card variant="raised" padding="md" className="metric-card">
+          <div className="metric-card-header">
+            <span className="metric-label">{t.nextFollowUpLabel}</span>
+            {nextScheduledFollowUp ? (
+              <StatusTag variant="routine" label={nextScheduledFollowUp.status} />
+            ) : (
+              <StatusTag variant="amber" label="None active" />
+            )}
           </div>
-          <div className="stat-card-body">
-            <span className="stat-card-value">–</span>
-            <span className="stat-card-subtext">Scheduled this week</span>
+          <div className="metric-card-body">
+            <span className="metric-value metric-value-visit">
+              {loading ? (
+                <span className="metric-skeleton spinning">...</span>
+              ) : nextScheduledFollowUp ? (
+                nextScheduledFollowUp.date
+              ) : (
+                '–'
+              )}
+            </span>
           </div>
-        </div>
+          <div className="metric-card-footer">
+            <span className="metric-subtext">
+              {nextScheduledFollowUp
+                ? `${t.scheduledOn} ${nextScheduledFollowUp.purpose}`
+                : t.noScheduledFollowUp}
+            </span>
+          </div>
+        </Card>
       </div>
 
-      {/* Main Split Layout: Recent Patients Table (Left) + Upcoming Follow-ups (Right) */}
-      <div className="overview-content-layout">
-        {/* Left Column: Recent Patients Table */}
-        <section className="overview-table-card">
-          <div className="card-header">
-            <div>
-              <h2 className="card-title">Recent Patients</h2>
-              <p className="card-subtitle">
-                Synthetic CKD cohort baseline labs & progression risk classification
-              </p>
+      {/* Two Column Grid: Today's Action Check-in & Care Coordination Support */}
+      <div className="two-column-grid">
+        {/* Left: Today's Check-in / Log Summary */}
+        <Card variant="raised" padding="md" className="action-card">
+          <div className="action-card-header">
+            <div className="action-header-text">
+              <h2 className="action-card-title">{t.dailyCheckinTitle}</h2>
+              <p className="action-card-desc">{t.dailyCheckinDesc}</p>
             </div>
-            {totalPatients !== null && (
-              <span className="card-badge-count">{totalPatients} Total Cohort</span>
+            {latestLog ? (
+              <StatusTag variant="complete" label="Complete" />
+            ) : (
+              <StatusTag variant="current" label="Due today" />
             )}
           </div>
 
-          <div className="table-responsive">
-            <table className="patients-table">
-              <thead>
+          <div className="action-items-list">
+            <div className="action-item">
+              <span className="action-item-icon check-icon" aria-hidden="true">✓</span>
+              <div className="action-item-text">
+                <strong>{t.todayLogSummaryTitle}</strong>
+                <p>
+                  {latestLog
+                    ? `${t.loggedToday}: BP ${latestLog.systolic}/${latestLog.diastolic} mmHg, ${latestLog.steps} steps, symptoms: ${
+                        latestLog.symptoms && latestLog.symptoms.length > 0
+                          ? latestLog.symptoms.join(', ')
+                          : 'None'
+                      }`
+                    : t.notLoggedToday}
+                </p>
+              </div>
+            </div>
+
+            <div className="action-item">
+              <span className="action-item-icon check-icon" aria-hidden="true">✓</span>
+              <div className="action-item-text">
+                <strong>{t.driversTitle}</strong>
+                <p>
+                  {twin?.top_drivers && twin.top_drivers.length > 0
+                    ? twin.top_drivers.join(' · ')
+                    : 'Awaiting longitudinal readings to evaluate top progression drivers.'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="action-card-footer">
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => navigate('/log-today')}
+              iconRight={<span>→</span>}
+            >
+              {t.logNowButton}
+            </Button>
+          </div>
+        </Card>
+
+        {/* Right: Talk to your health worker */}
+        <Card variant="raised" padding="md" className="support-card">
+          <div className="support-card-header">
+            <div className="support-avatar-circle">HW</div>
+            <div className="support-header-text">
+              <h2 className="support-card-title">{t.healthWorkerTitle}</h2>
+              <p className="support-card-role">{t.healthWorkerRole}</p>
+            </div>
+          </div>
+
+          <p className="support-body-text">{t.healthWorkerDesc}</p>
+
+          <div className="support-timing-box">
+            <strong>{t.healthWorkerHours}</strong>
+            <p>RENALIS Community Care Coordination</p>
+          </div>
+
+          <div className="support-card-actions">
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => navigate('/language-help')}
+              iconLeft={
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                </svg>
+              }
+            >
+              {t.healthWorkerCallBtn}
+            </Button>
+            <p className="support-demo-note">{t.healthWorkerDemoNotice}</p>
+          </div>
+        </Card>
+      </div>
+
+      {/* Recent Health Logs Section */}
+      <Card variant="raised" padding="md" className="logs-table-card">
+        <div className="logs-header">
+          <div>
+            <h2 className="logs-title">{t.recentLogsTitle}</h2>
+            <p className="logs-subtitle">{t.recentLogsSubtitle} (<code>{patientId}</code>)</p>
+          </div>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => navigate('/log-today')}
+          >
+            + {t.logNowButton}
+          </Button>
+        </div>
+
+        <div className="table-wrapper">
+          <table className="logs-table">
+            <thead>
+              <tr>
+                <th scope="col">{t.dateCol}</th>
+                <th scope="col">{t.bpCol}</th>
+                <th scope="col">{t.symptomsCol}</th>
+                <th scope="col">{t.medsCol}</th>
+                <th scope="col">{t.statusCol}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
                 <tr>
-                  <th>Patient ID</th>
-                  <th>Name</th>
-                  <th>Age</th>
-                  <th>Risk Level</th>
-                  <th>Latest eGFR</th>
-                  <th>Last Updated</th>
+                  <td colSpan={5} className="table-loading-cell">
+                    <span className="spinning">⏳</span> {t.loading}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {loading && patients.length === 0 ? (
-                  Array.from({ length: 6 }).map((_, i) => (
-                    <tr key={`skeleton-${i}`} className="table-row-skeleton">
-                      <td><div className="skeleton-bar w-16" /></td>
-                      <td><div className="skeleton-bar w-28" /></td>
-                      <td><div className="skeleton-bar w-12" /></td>
-                      <td><div className="skeleton-bar w-20" /></td>
-                      <td><div className="skeleton-bar w-24" /></td>
-                      <td><div className="skeleton-bar w-16" /></td>
-                    </tr>
-                  ))
-                ) : patients.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="table-empty-cell">
-                      {error ? 'No patient data loaded (backend unreachable).' : 'No patient records found.'}
+              ) : logs && logs.length > 0 ? (
+                logs.map((log) => (
+                  <tr key={log.id}>
+                    <td><strong>{log.created_at.split('T')[0]}</strong></td>
+                    <td>{`${log.systolic} / ${log.diastolic} mmHg`}</td>
+                    <td>
+                      {log.symptoms && log.symptoms.length > 0
+                        ? log.symptoms.join(', ')
+                        : 'None reported'}
+                    </td>
+                    <td>{log.medicines_taken ? 'Yes · Taken' : 'No'}</td>
+                    <td>
+                      {log.urgent ? (
+                        <StatusTag variant="urgent" label="Urgent Alert" />
+                      ) : (
+                        <StatusTag variant="routine" label="Logged" />
+                      )}
                     </td>
                   </tr>
-                ) : (
-                  patients.map((patient) => {
-                    const name = getPatientDisplayName(patient);
-                    const risk: RiskLevel = getPatientRiskLevel(patient);
-                    const egfrVal = patient.baseline_egfr ?? 60;
-                    const stage = getCkdStage(egfrVal);
-
-                    return (
-                      <tr key={patient.patient_id} className="patient-row">
-                        {/* Patient ID */}
-                        <td>
-                          <span className="patient-id-badge">{patient.patient_id}</span>
-                        </td>
-
-                        {/* Name */}
-                        <td>
-                          <div className="patient-name-cell">
-                            <span className="patient-avatar-mini">
-                              {name.charAt(0)}
-                            </span>
-                            <span className="patient-name-text">{name}</span>
-                          </div>
-                        </td>
-
-                        {/* Age & Sex */}
-                        <td>
-                          <span className="patient-age-text">
-                            {patient.age} yrs • {patient.sex}
-                          </span>
-                        </td>
-
-                        {/* Risk Level Pill */}
-                        <td>
-                          <RiskBadge level={risk} />
-                        </td>
-
-                        {/* Latest eGFR */}
-                        <td>
-                          <div className="egfr-cell">
-                            <span className="egfr-value">{egfrVal.toFixed(1)}</span>
-                            <span className="egfr-unit">mL/min</span>
-                            <span className="egfr-stage-tag">{stage.split(' ')[0]}</span>
-                          </div>
-                        </td>
-
-                        {/* Last Updated */}
-                        <td>
-                          <span className="last-updated-text">Month 9</span>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        {/* Right Column: Upcoming Follow-ups list */}
-        <aside className="overview-followups-card">
-          <div className="card-header">
-            <div>
-              <h2 className="card-title">Upcoming Follow-ups</h2>
-              <p className="card-subtitle">Scheduled care team touchpoints</p>
-            </div>
-            <span className="card-badge-count">4 Scheduled</span>
-          </div>
-
-          <div className="followups-list">
-            {/* Follow-up Item 1 */}
-            <div className="followup-item urgency-high">
-              <div className="followup-time-badge due-today">Due Today</div>
-              <div className="followup-body">
-                <div className="followup-patient">
-                  <span className="followup-pid">SYN-001</span>
-                  <span className="followup-name">Arthur Pendelton</span>
-                </div>
-                <p className="followup-task">
-                  Medication adherence review & SGLT2i / RASi titration check
-                </p>
-                <div className="followup-meta">
-                  <span className="followup-provider">Dr. Sarah Lin (Lead)</span>
-                  <span className="followup-status">Pending Review</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Follow-up Item 2 */}
-            <div className="followup-item urgency-medium">
-              <div className="followup-time-badge due-soon">Tomorrow • 09:30 AM</div>
-              <div className="followup-body">
-                <div className="followup-patient">
-                  <span className="followup-pid">SYN-002</span>
-                  <span className="followup-name">Marcus Miller</span>
-                </div>
-                <p className="followup-task">
-                  Repeat serum creatinine & proteinuria qualitative dipstick evaluation
-                </p>
-                <div className="followup-meta">
-                  <span className="followup-provider">Nephrology Clinic</span>
-                  <span className="followup-status">Lab Scheduled</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Follow-up Item 3 */}
-            <div className="followup-item urgency-low">
-              <div className="followup-time-badge">Oct 20, 2026</div>
-              <div className="followup-body">
-                <div className="followup-patient">
-                  <span className="followup-pid">SYN-004</span>
-                  <span className="followup-name">Edward Reynolds</span>
-                </div>
-                <p className="followup-task">
-                  Blood pressure target consultation (KDIGO guideline &lt;120 mmHg)
-                </p>
-                <div className="followup-meta">
-                  <span className="followup-provider">Care Coordinator</span>
-                  <span className="followup-status">Confirmed</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Follow-up Item 4 */}
-            <div className="followup-item urgency-low">
-              <div className="followup-time-badge">Oct 22, 2026</div>
-              <div className="followup-body">
-                <div className="followup-patient">
-                  <span className="followup-pid">SYN-007</span>
-                  <span className="followup-name">Eleanor Vance</span>
-                </div>
-                <p className="followup-task">
-                  Dietary sodium restriction & ambulatory care check-in
-                </p>
-                <div className="followup-meta">
-                  <span className="followup-provider">Renal Dietitian</span>
-                  <span className="followup-status">Scheduled</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="followups-footer">
-            <button type="button" className="followups-action-btn">
-              + Schedule Follow-up Touchpoint
-            </button>
-          </div>
-        </aside>
-      </div>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5} className="table-empty-cell">
+                    <div className="empty-logs-content">
+                      <span className="empty-dash">–</span>
+                      <p>No health logs returned from server for patient {patientId}.</p>
+                      <span className="empty-subtext">Scores and log entries display "–" until submitted.</span>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
     </div>
   );
 };
