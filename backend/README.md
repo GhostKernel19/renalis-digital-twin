@@ -2,7 +2,7 @@
 
 This directory contains the core REST API microservice and digital twin simulation backend for RENALIS (**Digital Twin Challenge 2026**).
 
-The service exposes endpoints for synthetic patient data ingestion, real-time Chronic Kidney Disease (CKD) progression risk assessment using our scikit-learn model, trajectory forecasting, and care coordination referral queue management.
+The service exposes endpoints for synthetic patient data ingestion, real-time Chronic Kidney Disease (CKD) progression risk assessment using our scikit-learn model, trajectory forecasting with lower/upper bounds, telemetry logging with demonstration safety triggers, care coordination referral queues, generic follow-ups, and SQLite persistence.
 
 ---
 
@@ -16,18 +16,23 @@ The service exposes endpoints for synthetic patient data ingestion, real-time Ch
                             │ REST / JSON (CORS Enabled)
 ┌───────────────────────────▼────────────────────────────┐
 │              FastAPI Backend (backend/app)             │
-│  - GET  /health          (System health & model status)│
-│  - POST /assess-patient  (Pydantic validation + risk)  │
-│  - GET  /patients        (Synthetic cohort list)       │
-│  - GET  /patients/{id}   (Profile + telemetry history) │
-│  - POST /referrals       (Care coordination queue)     │
-│  - GET  /referrals       (List active referrals)       │
+│  - GET  /health          (Health & model diagnostics)  │
+│  - GET  /patients        (Cohort search & tier filter) │
+│  - GET  /patients/{id}   (Profile & telemetry history) │
+│  - GET  /patients/{id}/readings (Monthly telemetry)    │
+│  - GET  /patients/{id}/twin     (Twin state & bounds)  │
+│  - POST /patients        (Intake & CKD-EPI 2021 eGFR)  │
+│  - POST /patients/{id}/logs     (Daily logs & safety)  │
+│  - GET  /patients/{id}/logs     (Daily log history)    │
+│  - POST/GET/PATCH /referrals    (Care queue management)│
+│  - POST/GET/PATCH /follow-ups   (Generic appointments) │
+│  - GET  /stats           (Cohort & operations summary) │
 └─────────────▲────────────────────────────▲─────────────┘
               │                            │
 ┌─────────────▼─────────────┐┌─────────────▼─────────────┐
-│  ml/models/risk_model     ││   data/synthetic/         │
-│  - Logistic Regression    ││  - patients.csv (500 pts) │
-│  - Scaled, M1-9 features  ││  - readings.csv (6000 rds)│
+│  ML Models (ml/models/)   ││  Persistence & Synthetic  │
+│  - risk_model.joblib      ││  - data/synthetic/ (500)  │
+│  - baseline_model.joblib  ││  - backend/data/renalis.db│
 └───────────────────────────┘└───────────────────────────┘
 ```
 
@@ -64,6 +69,7 @@ pip install -r requirements.txt
 ```
 
 > **Core Dependencies:** `fastapi`, `uvicorn`, `pydantic`, `pandas`, `scikit-learn`, `joblib`, `pytest`, `httpx`.
+> Uses Python's built-in `sqlite3` for persistence with **zero additional database dependencies**.
 
 ---
 
@@ -91,113 +97,122 @@ Execute the automated pytest suite from the repository root:
 pytest backend/tests/test_api.py -v
 ```
 
-Tests cover:
-- System health and risk model discovery verification (`/health`).
-- Risk assessment inference and 3-month forecast generation (`/assess-patient`).
-- Input bounds validation and 422 Unprocessable Entity error responses.
-- Synthetic patient cohort listing and individual profile retrieval with readings (`/patients`).
-- Multidisciplinary care referral creation and filtering (`/referrals`).
-- Missing model graceful 503 error handling.
+The test suite validates:
+- System health, synthetic cohort verification, and missing artifact instructions (`/health`).
+- Cohort listing with search, risk tier filtering, and pagination (`/patients`).
+- Individual profile and longitudinal telemetry history retrieval (`/patients/{id}`, `/patients/{id}/readings`).
+- Digital twin progression state, explainable plain-word drivers, and 3-month projection with prediction bounds (`/patients/{id}/twin`).
+- Patient intake with 2021 CKD-EPI eGFR calculation and SQLite persistence (`POST /patients`).
+- Daily telemetry logging and demonstration urgent alerts (calling 112 on short of breath or SBP >= 180) (`/patients/{id}/logs`).
+- Care coordination referral queue with staff priority ('Routine'/'Urgent') and suggested model tier (`/referrals`).
+- Generic care team follow-ups and strict Rule 5 enforcement blocking medication prescribing (`/follow-ups`).
+- Cohort aggregate statistics (`/stats`).
+- Strict Pydantic input bounds validation (HTTP 422 errors).
 
 ---
 
 ## REST Endpoints Overview
 
 ### 1. System Health (`GET /health`)
-Verifies service availability, synthetic dataset presence, and model artifact status (`ml/models/risk_model.joblib`).
+Verifies service availability, synthetic dataset presence (`data/synthetic/patients.csv`), and model artifact status (`risk_model.joblib` and `baseline_model.joblib`).
 
 ```bash
 curl -X GET http://localhost:8000/health
 ```
 
-**Response Example:**
-```json
-{
-  "status": "healthy",
-  "service": "RENALIS Digital Twin Backend",
-  "model_loaded": true,
-  "model_file_exists": true,
-  "model_path": "D:/.../ml/models/risk_model.joblib",
-  "message": "Service is healthy and risk model is ready."
-}
-```
-
-If the model artifact is missing, `/health` returns `"model_loaded": false` with actionable guidance to run `python ml/train.py`.
+If files or models are missing, `/health` provides actionable command-line instructions:
+- Generate synthetic cohort: `python data/generate_synthetic.py --num-patients 500 --seed 42`
+- Train longitudinal risk model: `python ml/train.py`
+- Train static baseline model: `python ml/train_static.py`
 
 ---
 
-### 2. Progression Risk Assessment (`POST /assess-patient`)
-Takes patient demographics and longitudinal telemetry (strictly Months 1–9) and outputs progression probability, clinical risk tier, top 3 contributing factors, and a 3-month projected eGFR trajectory.
+### 2. Patient Cohort & Telemetry (`GET /patients`, `GET /patients/{id}`, `GET /patients/{id}/readings`)
+- `GET /patients?search=SYN-001&risk_tier=High&limit=50&offset=0`: Retrieves patients from the synthetic cohort (500 patients, seed 42) plus newly onboarded intake patients. Every record includes precomputed model `risk_tier` and `risk_probability`.
+- `GET /patients/{id}`: Returns patient demographic profile and complete longitudinal readings.
+- `GET /patients/{id}/readings`: Returns monthly telemetry list.
 
-```bash
-curl -X POST http://localhost:8000/assess-patient \
-  -H "Content-Type: application/json" \
-  -d '{
-    "patient": {
-      "patient_id": "SYN-001",
-      "age": 62,
-      "sex": "M",
-      "diabetes": 1,
-      "hypertension": 1,
-      "bmi": 22.7,
-      "baseline_creatinine": 0.68,
-      "baseline_egfr": 105.1,
-      "urine_protein": "+1"
-    },
-    "readings": [
-      {"month": 1, "egfr": 104.2, "systolic_bp": 138, "diastolic_bp": 86, "adherence_pct": 92.0, "daily_steps": 6200},
-      {"month": 9, "egfr": 89.7, "systolic_bp": 158, "diastolic_bp": 96, "adherence_pct": 54.0, "daily_steps": 3800}
-    ]
-  }'
-```
+---
 
-**Response Example:**
+### 3. Digital Twin Progression Profile (`GET /patients/{id}/twin`)
+Calculates the interactive digital twin state:
+- Latest kidney score (eGFR) and KDIGO CKD Stage (G1 to G5).
+- Model probability and risk action tier (Low, Medium, High).
+- Basis: `"trend model"` (if $\ge 6$ monthly readings) or `"baseline only"` ($< 6$ readings).
+- Top 3 progression drivers translated into clear plain-word terms (e.g., *"Rate of kidney function decline (eGFR slope)"*, *"Blood pressure variability over time"*).
+- 3-month eGFR trajectory with lower and upper bounds (95% prediction interval) and explicitly stated estimation methodology.
+
 ```json
 {
+  "patient_id": "SYN-001",
+  "latest_kidney_score": 89.7,
+  "ckd_stage": "Stage 2 (G2, Mildly decreased)",
   "probability": 0.9967,
   "tier": "High",
-  "top_features": [
-    "egfr_slope",
-    "adherence_slope",
-    "steps_slope"
+  "basis": "trend model",
+  "top_drivers": [
+    "Rate of kidney function decline (eGFR slope)",
+    "Declining adherence pattern",
+    "Downward trend in daily step count"
   ],
+  "top_features": ["egfr_slope", "adherence_slope", "steps_slope"],
   "estimated_3m_egfr_trend": {
+    "method": "Ordinary least squares linear trend regression over observed monthly eGFR readings (Months 1 to 9) projected 3 months forward with 95% prediction interval bounds. Experimental prototype; not clinically validated.",
     "projected_slope": -3.77,
+    "projected_3m_egfr": 78.4,
+    "lower_bound": 74.2,
+    "upper_bound": 82.6,
     "projected_3m_change_pct": -12.6,
     "projected_readings": [
-      {"month": 10, "projected_egfr": 85.9},
-      {"month": 11, "projected_egfr": 82.2},
-      {"month": 12, "projected_egfr": 78.4}
+      {"month": 10, "projected_egfr": 85.9, "lower_bound": 82.1, "upper_bound": 89.7},
+      {"month": 11, "projected_egfr": 82.2, "lower_bound": 78.2, "upper_bound": 86.2},
+      {"month": 12, "projected_egfr": 78.4, "lower_bound": 74.2, "upper_bound": 82.6}
     ],
-    "summary": "High risk of rapid deterioration: projected drop of 12.6% from 89.7 to 78.4 mL/min/1.73m² by Month 12 (projected slope: -3.77 mL/min/1.73m²/mo)."
+    "summary": "Projected trajectory indicates accelerated kidney function decline: eGFR estimated to change by -12.6% from 89.7 to 78.4 mL/min/1.73m² over 3 months (95% bound: 74.2 to 82.6)."
   }
 }
 ```
 
-#### Validation & Error Handling (HTTP 422)
-Inputs are strictly validated using Pydantic:
-- `age`: 18 to 100 years.
-- `systolic_bp`: 70 to 240 mmHg.
-- `diastolic_bp`: 40 to 150 mmHg.
-- `baseline_creatinine`: 0.3 to 15.0 mg/dL.
-- `readings`: Must contain at least 1 reading.
-Any out-of-range value returns a structured HTTP 422 Unprocessable Entity error detailing the offending field.
+---
+
+### 4. Patient Intake (`POST /patients`)
+Onboards a new patient:
+1. Calculates baseline eGFR from serum creatinine using the **2021 CKD-EPI Creatinine equation** (without race):
+   $$eGFR = 142 \times \min(S_{cr}/\kappa, 1)^\alpha \times \max(S_{cr}/\kappa, 1)^{-1.200} \times 0.9938^{\text{age}} \times \text{gender\_factor}$$
+2. Persists the patient to SQLite database (`backend/data/renalis.db`).
+3. Executes baseline progression model inference (`basis: "baseline only"` if $< 6$ earlier readings).
+4. Records digital twin assessment and returns the full twin profile.
 
 ---
 
-### 3. Patient Ingestion (`GET /patients` & `GET /patients/{id}`)
-- `GET /patients?limit=50&offset=0`: Returns paginated synthetic patients loaded from `data/synthetic/patients.csv` (or fallback sample `data/sample/patients_sample.csv`).
-- `GET /patients/{id}`: Returns individual patient demographics together with all 12 monthly biometric readings for digital twin longitudinal timeline visualization.
+### 5. Daily Telemetry & Demonstration Safety Alerts (`POST` & `GET /patients/{id}/logs`)
+Accepts daily vitals: `systolic`, `diastolic`, `steps`, `medicines_taken`, and `symptoms`.
+
+**Demonstration Safety Rule:**
+If symptoms include `short of breath` (or variants) OR `systolic >= 180`, the endpoint returns `urgent=True` with an emergency message directing the user to seek urgent medical evaluation and call **112**. The message is explicitly designated as an automated demonstration rule, NOT clinical guidance.
 
 ---
 
-### 4. Referral Queue (`POST /referrals` & `GET /referrals`)
-Manages care team coordination referrals for high-risk patients.
-- `POST /referrals`: Submits a patient with `reason`, `priority` (`Low`, `Medium`, `High`, `Urgent`), and `status` (`Pending`, `In Review`, `Reviewed`).
-- `GET /referrals`: Lists active referrals with optional `status_filter` and `patient_id` query parameters.
+### 6. Care Coordination Referrals (`POST`, `GET`, `PATCH /referrals`)
+- `POST /referrals`: Creates referral. Staff assign priority (`Routine` or `Urgent`). The model risk tier is saved separately as a recommendation.
+- `GET /referrals`: Lists referrals with optional `status` (`Pending`, `In Review`, `Reviewed`, `Completed`) and `priority` filters.
+- `PATCH /referrals/{id}`: Staff updates priority, workflow status, and clinical notes.
 
-> **Storage Notice:** Currently stored in-memory.
-> `// TODO: Replace in-memory referral store with Google Cloud Firestore in production.`
+---
+
+### 7. Generic Care Team Follow-Ups (`POST`, `GET`, `PATCH /follow-ups`)
+Manages generic care team appointments:
+- Allowed purposes are generic only (e.g. *"Repeat blood test"*, *"Blood pressure check"*, *"Urinalysis review"*).
+- Enforces Rule 5 via Pydantic validators: Any drug name, dosage, or treatment advice is strictly rejected with HTTP 422.
+
+---
+
+### 8. Platform Statistics (`GET /stats`)
+Returns:
+- `totals`: Patient count (500 synthetic + added intake patients), assessments, logs, referrals, and follow-ups.
+- `risk_tier_distribution`: Count across Low, Medium, High risk tiers.
+- `referrals_by_status`: Grouped count of referrals.
+- `follow_ups_due_this_week`: Number of follow-ups scheduled in the current calendar week.
 
 ---
 
@@ -206,7 +221,8 @@ Manages care team coordination referrals for high-risk patients.
 > [!CAUTION]
 > ### Prototype Notice & Clinical Limitations
 >
-> 1. **Synthetic Cohort Only:** All patient records, telemetry, and laboratory parameters served by this API are 100% synthetic (generated by `data/generate_synthetic.py`). No real human subjects or Protected Health Information (PHI) were utilized.
-> 2. **Rule-Based Ground Truth:** The progression risk labels are mathematical consequences of synthetic decline injection algorithms programmed into the generator. High model performance verifies software pipeline integration, NOT clinical diagnostic efficacy.
-> 3. **Non-Clinically Validated:** The risk probabilities and 3-month projected eGFR trends are research prototypes developed exclusively for the **Digital Twin Challenge 2026**.
+> 1. **Synthetic Cohort Only:** All patient records, telemetry, and laboratory parameters served by this API are 100% synthetic (generated by `data/generate_synthetic.py` with seed 42). No real human subjects or Protected Health Information (PHI) were utilized.
+> 2. **Rule-Based Ground Truth:** The progression risk labels are mathematical consequences of synthetic decline injection heuristics programmed into the generator. High model performance verifies software pipeline integration, NOT clinical diagnostic efficacy.
+> 3. **Non-Clinically Validated:** The risk probabilities, 3-month projected eGFR trends, and safety alerts are research prototypes developed exclusively for the **Digital Twin Challenge 2026**.
 > 4. **No Medical Use:** This software is not an approved medical device and must **never be used for clinical diagnosis, patient triage, prognosis, medication selection, or therapeutic decision-making.**
+> 5. **Zero Prescriptive Content (Rule 5):** The system strictly avoids emitting drug names, dosages, or treatment advice.

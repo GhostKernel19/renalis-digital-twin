@@ -2,7 +2,7 @@
 
 This directory contains the machine learning feature extraction, model training, evaluation, and real-time risk inference pipelines for RENALIS (**Digital Twin Challenge 2026**).
 
-The ML engine predicts rapid late-stage Chronic Kidney Disease (CKD) deterioration—defined as an **eGFR decline greater than 10% between Month 9 and Month 12**—using strictly baseline patient profiles and longitudinal readings from **Months 1 to 9**.
+The ML engine predicts rapid late-stage Chronic Kidney Disease (CKD) deterioration—defined as an **eGFR decline greater than 10% between Month 9 and Month 12**—using longitudinal readings from **Months 1 to 9** when available, or a static baseline model for newly onboarded patients with fewer than 6 monthly readings.
 
 ---
 
@@ -14,31 +14,36 @@ The ML engine predicts rapid late-stage Chronic Kidney Disease (CKD) deteriorati
 │  - Static demographics & labs   │     │  - Longitudinal telemetry (M1-9)│
 └────────────────┬────────────────┘     └────────────────┬────────────────┘
                  │                                       │
-                 └───────────────────┬───────────────────┘
-                                     │
-                                     ▼
-                       ┌───────────────────────────┐
-                       │      ml/features.py       │
-                       │  - 8 static features      │
-                       │  - 8 trend features (M1-9)│
-                       │  - ZERO LEAKAGE of M10-12 │
-                       └─────────────┬─────────────┘
-                                     │
-                      ┌──────────────┴──────────────┐
-                      ▼                             ▼
-        ┌───────────────────────────┐ ┌───────────────────────────┐
-        │        ml/train.py        │ │       ml/predict.py       │
-        │ - Stratified 80/20 split  │ │ - predict_risk(pt, rds)   │
-        │ - Logistic Regression     │ │ - Risk probability        │
-        │ - Random Forest           │ │ - Risk tier (Low/Med/High)│
-        │ - Model selection by AUC  │ │ - Top 3 features          │
-        └─────────────┬─────────────┘ └─────────────▲─────────────┘
-                      │                             │
-                      ▼                             │
-        ┌───────────────────────────┐               │
-        │ ml/models/risk_model.joblib─────────────────┘
-        │ (Serialized model bundle) │
-        └───────────────────────────┘
+                 ├───────────────────┬───────────────────┘
+                 │                   │
+                 ▼                   ▼
+     ┌───────────────────────┐ ┌───────────────────────────┐
+     │  ml/train_static.py   │ │      ml/features.py       │
+     │  - 8 static features  │ │  - 8 static features      │
+     │  - Logistic Regression│ │  - 8 trend features (M1-9)│
+     │  - 80/20 stratified   │ │  - ZERO LEAKAGE of M10-12 │
+     └───────────┬───────────┘ └─────────────┬─────────────┘
+                 │                           │
+                 ▼                           ▼
+     ┌───────────────────────┐ ┌───────────────────────────┐
+     │ ml/models/            │ │        ml/train.py        │
+     │  baseline_model.joblib│ │ - Stratified 80/20 split  │
+     └───────────┬───────────┘ │ - Logistic Regression     │
+                 │             │ - Random Forest           │
+                 │             └─────────────┬─────────────┘
+                 │                           │
+                 │                           ▼
+                 │             ┌───────────────────────────┐
+                 │             │ ml/models/risk_model.joblib│
+                 │             └─────────────┬─────────────┘
+                 │                           │
+                 ▼                           ▼
+       ┌───────────────────────────────────────────┐
+       │               ml/predict.py               │
+       │ - If < 6 monthly readings: baseline only  │
+       │ - If >= 6 monthly readings: trend model   │
+       │ - Returns probability, tier, and basis    │
+       └───────────────────────────────────────────┘
 ```
 
 ---
@@ -96,93 +101,71 @@ Extracts 16 tabular features (8 static demographics + 8 longitudinal trend featu
 | 10 | `last_egfr` | Trend | Latest observed eGFR value within Month 9 |
 | 11 | `systolic_bp_slope` | Trend | Linear slope of systolic blood pressure over Months 1–9 |
 | 12 | `systolic_bp_std` | Trend | Standard deviation of systolic blood pressure over Months 1–9 |
-| 13 | `mean_adherence` | Trend | Mean medication adherence percentage across Months 1–9 |
-| 14 | `adherence_slope` | Trend | Linear slope of medication adherence across Months 1–9 |
+| 13 | `mean_adherence` | Trend | Mean adherence percentage across Months 1–9 |
+| 14 | `adherence_slope` | Trend | Linear slope of adherence across Months 1–9 |
 | 15 | `mean_daily_steps` | Trend | Average daily step count across Months 1–9 |
 | 16 | `steps_slope` | Trend | Linear slope of daily step count across Months 1–9 |
 
 > [!IMPORTANT]
-> **Strict Leakage Prevention:** Features are computed exclusively using readings from **Months 1 to 9**. Telemetry from Months 10 to 12 is never accessed or provided as input to the feature extraction or model inference pipelines.
+> **Strict Leakage Prevention:** Longitudinal trend features are computed exclusively using readings from **Months 1 to 9**. Telemetry from Months 10 to 12 is never accessed or provided as input to the feature extraction or model inference pipelines.
 
 ---
 
-## 2. Model Training & Evaluation (`ml/train.py`)
+## 2. Model Training Pipelines
 
-Train competitive models on the synthetic cohort with a stratified 80/20 train/test split (fixed random seed = 42):
+### A. Full Longitudinal Trend Model (`ml/train.py`)
+
+Trains supervised models on the synthetic cohort (500 patients) with a stratified 80/20 train/test split (`seed=42`):
 
 ```bash
 python ml/train.py
 ```
 
-### Options
+The pipeline trains standardized Logistic Regression and Random Forest models, selects the superior model by test ROC-AUC (Logistic Regression, ROC-AUC = 0.9729), and serializes it to `ml/models/risk_model.joblib`.
+
+### B. Static Baseline Model (`ml/train_static.py`)
+
+For new patients with no history or fewer than 6 monthly readings, RENALIS trains a baseline Logistic Regression model on **static features only** (`age`, `sex`, `diabetes`, `hypertension`, `bmi`, `baseline_creatinine`, `baseline_egfr`, `urine_protein`):
+
 ```bash
-python ml/train.py --seed 42 --test-size 0.2 --output ml/models/risk_model.joblib
+python ml/train_static.py
 ```
 
-### Evaluation Benchmark (Test Set, N = 100)
-
+#### Evaluation Benchmark (Test Set, N = 100)
 ```
 =================================================================
-  MODEL EVALUATION: Logistic Regression (scaled)
+  MODEL EVALUATION: Logistic Regression (Static Baseline)
 =================================================================
-  ROC-AUC Score:    0.9729
-  Precision:        0.8929
-  Recall:           0.8333
-  F1 Score:         0.8621
+  ROC-AUC Score:    0.4124
+  Precision:        0.0000
+  Recall:           0.0000
+  F1 Score:         0.0000
 -----------------------------------------------------------------
   Confusion Matrix (Test Set):
                     Predicted 0 (Stable)   Predicted 1 (Decline)
-  Actual 0 (Stable)         TN: 67                   FP: 3   
-  Actual 1 (Decline)        FN: 5                    TP: 25  
-=================================================================
-
-=================================================================
-  MODEL EVALUATION: Random Forest
-=================================================================
-  ROC-AUC Score:    0.9667
-  Precision:        0.9000
-  Recall:           0.9000
-  F1 Score:         0.9000
------------------------------------------------------------------
-  Confusion Matrix (Test Set):
-                    Predicted 0 (Stable)   Predicted 1 (Decline)
-  Actual 0 (Stable)         TN: 67                   FP: 3   
-  Actual 1 (Decline)        FN: 3                    TP: 27  
+  Actual 0 (Stable)         TN: 70                   FP: 0   
+  Actual 1 (Decline)        FN: 30                   TP: 0   
 =================================================================
 ```
 
-The pipeline automatically identifies the model with the highest test ROC-AUC (Logistic Regression, ROC-AUC = 0.9729) and serializes it along with feature metadata to `ml/models/risk_model.joblib`.
+The baseline model is saved to `ml/models/baseline_model.joblib`. Without longitudinal trajectory features, static features alone provide baseline prior risk estimation.
 
 ---
 
 ## 3. Real-Time Risk Inference (`ml/predict.py`)
 
-The primary integration endpoint for the FastAPI backend service:
+The primary prediction interface for the FastAPI backend service. Automatically branches between the trend model and baseline model based on reading count:
 
 ```python
 from ml.predict import predict_risk
 
-patient = {
-    "patient_id": "SYN-001",
-    "age": 62,
-    "sex": "M",
-    "diabetes": 1,
-    "hypertension": 1,
-    "bmi": 22.7,
-    "baseline_creatinine": 0.68,
-    "baseline_egfr": 105.1,
-    "urine_protein": "+1",
-}
+# Case 1: Longitudinal history (>= 6 readings) -> uses trend model
+result_trend = predict_risk(patient, readings_9_months)
+# Returns basis: "trend model"
 
-readings = [
-    {"month": 1, "egfr": 104.2, "systolic_bp": 138, "adherence_pct": 92.0, "daily_steps": 6200},
-    {"month": 2, "egfr": 102.5, "systolic_bp": 140, "adherence_pct": 89.0, "daily_steps": 5900},
-    # ... up to month 9
-    {"month": 9, "egfr": 89.7,  "systolic_bp": 158, "adherence_pct": 54.0, "daily_steps": 3800},
-]
-
-result = predict_risk(patient, readings)
-print(result)
+# Case 2: Incomplete or zero history (< 6 readings) -> uses baseline model
+result_baseline = predict_risk(patient, readings_3_months)
+# Returns basis: "baseline only"
 ```
 
 ### Output Schema
@@ -191,6 +174,7 @@ print(result)
 {
   "probability": 0.9967,
   "tier": "High",
+  "basis": "trend model",
   "top_features": [
     "egfr_slope",
     "adherence_slope",
@@ -206,11 +190,11 @@ print(result)
 
 ### Risk Stratification Tiers
 
-| Tier | Probability Range | Care Team Clinical Implication |
+| Tier | Probability Range | Clinical Action Priority |
 |:---|:---|:---|
-| **Low** | `< 0.33` | Standard annual primary care follow-up; reinforce lifestyle & adherence |
-| **Medium** | `0.33` to `0.66` | Nephrology care coordinator check-in; medication reconciliation; lab in 90 days |
-| **High** | `> 0.66` | Urgent multidisciplinary consultation; SGLT2i / RASi titration review; BP optimization |
+| **Low** | `< 0.33` | Standard annual primary care follow-up; lifestyle and health habit reinforcement |
+| **Medium** | `0.33` to `0.66` | Care coordinator review; repeat lab evaluation in 90 days |
+| **High** | `> 0.66` | Urgent multidisciplinary consultation; care plan review; blood pressure monitoring |
 
 ---
 
@@ -219,7 +203,8 @@ print(result)
 > [!CAUTION]
 > ### Honest Clinical Limitations Notice
 >
-> 1. **Rule-Derived Ground Truth:** The progression outcome labels (`1` vs `0`) are mathematically computed from synthetic deterioration heuristics injected by our generator script (`data/generate_synthetic.py`). 
-> 2. **Pipeline Demonstration Only:** The high evaluation scores (ROC-AUC > 0.96) reflect successful software engineering, correct feature extraction, and mathematical alignment with the synthetic generator rules. **They demonstrate technical pipeline execution, NOT clinical predictive accuracy.**
+> 1. **Rule-Derived Ground Truth:** The progression outcome labels (`1` vs `0`) are mathematically generated by synthetic decline injection algorithms programmed into the generator script (`data/generate_synthetic.py`).
+> 2. **Pipeline Demonstration Only:** High evaluation scores on longitudinal data reflect successful software engineering, correct feature extraction, and mathematical alignment with the generator rules. **They demonstrate technical pipeline execution, NOT clinical predictive accuracy.**
 > 3. **Non-Validated Research Prototype:** This system has **NOT been clinically validated** on real-world patient cohorts (such as CRIC, UK Biobank, or real EHR registries).
-> 4. **No Medical Decision-Making:** This prototype must **never be used for clinical diagnosis, patient triage, prognosis, medication prescribing, or therapeutic decision-making.**
+> 4. **No Medical Decision-Making:** This prototype must **never be used for clinical diagnosis, patient triage, prognosis, medication selection, or therapeutic decision-making.**
+> 5. **Zero Prescriptive Output (Rule 5):** The system strictly refrains from outputting drug names, dosages, or medical treatment advice.

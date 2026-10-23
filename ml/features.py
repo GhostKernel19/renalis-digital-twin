@@ -23,6 +23,18 @@ URINE_PROTEIN_MAP: Dict[str, int] = {
     "+3": 4,
 }
 
+# The canonical static baseline feature list
+STATIC_FEATURE_NAMES: List[str] = [
+    "age",
+    "sex",
+    "diabetes",
+    "hypertension",
+    "bmi",
+    "baseline_creatinine",
+    "baseline_egfr",
+    "urine_protein",
+]
+
 # The canonical feature column list
 FEATURE_NAMES: List[str] = [
     # Static baseline features
@@ -44,6 +56,26 @@ FEATURE_NAMES: List[str] = [
     "mean_daily_steps",
     "steps_slope",
 ]
+
+# Plain-language descriptions for explainable twin risk drivers (no drugs or advice)
+FEATURE_PLAIN_NAMES: Dict[str, str] = {
+    "age": "Older age",
+    "sex": "Biological sex factor",
+    "diabetes": "Type 2 diabetes diagnosis",
+    "hypertension": "High blood pressure history",
+    "bmi": "Body mass index (BMI)",
+    "baseline_creatinine": "Elevated baseline serum creatinine",
+    "baseline_egfr": "Reduced baseline kidney filtration rate",
+    "urine_protein": "Protein in urine (proteinuria)",
+    "egfr_slope": "Rate of kidney function decline (eGFR slope)",
+    "last_egfr": "Recent low kidney function level",
+    "systolic_bp_slope": "Rising systolic blood pressure trend",
+    "systolic_bp_std": "Blood pressure variability over time",
+    "mean_adherence": "Medication adherence consistency",
+    "adherence_slope": "Declining medication adherence pattern",
+    "mean_daily_steps": "Reduced daily physical activity",
+    "steps_slope": "Downward trend in daily step count",
+}
 
 
 def compute_linear_slope(x: np.ndarray, y: np.ndarray) -> float:
@@ -75,6 +107,20 @@ def encode_urine_protein(protein_val: Any) -> int:
     return URINE_PROTEIN_MAP.get(key, 0)
 
 
+def extract_patient_static_features(patient: Dict[str, Any]) -> Dict[str, float]:
+    """Extract static baseline demographic and laboratory features."""
+    return {
+        "age": float(patient.get("age", 50.0)),
+        "sex": float(encode_sex(patient.get("sex", "M"))),
+        "diabetes": float(patient.get("diabetes", 0)),
+        "hypertension": float(patient.get("hypertension", 0)),
+        "bmi": float(patient.get("bmi", 27.0)),
+        "baseline_creatinine": float(patient.get("baseline_creatinine", 1.2)),
+        "baseline_egfr": float(patient.get("baseline_egfr", 60.0)),
+        "urine_protein": float(encode_urine_protein(patient.get("urine_protein", "negative"))),
+    }
+
+
 def extract_patient_features(
     patient: Dict[str, Any],
     readings: List[Dict[str, Any]],
@@ -91,14 +137,8 @@ def extract_patient_features(
         Dict mapping each feature in FEATURE_NAMES to its scalar float value.
     """
     # 1. Static features
-    age = float(patient.get("age", 50.0))
-    sex = float(encode_sex(patient.get("sex", "M")))
-    diabetes = float(patient.get("diabetes", 0))
-    hypertension = float(patient.get("hypertension", 0))
-    bmi = float(patient.get("bmi", 27.0))
-    baseline_creatinine = float(patient.get("baseline_creatinine", 1.2))
-    baseline_egfr = float(patient.get("baseline_egfr", 60.0))
-    urine_protein = float(encode_urine_protein(patient.get("urine_protein", "negative")))
+    static_feats = extract_patient_static_features(patient)
+    baseline_egfr = static_feats["baseline_egfr"]
 
     # 2. Filter readings strictly to months 1 to 9 (Leakage prevention)
     m9_readings = [
@@ -134,15 +174,8 @@ def extract_patient_features(
         mean_daily_steps = 6000.0
         steps_slope = 0.0
 
-    return {
-        "age": age,
-        "sex": sex,
-        "diabetes": diabetes,
-        "hypertension": hypertension,
-        "bmi": bmi,
-        "baseline_creatinine": baseline_creatinine,
-        "baseline_egfr": baseline_egfr,
-        "urine_protein": urine_protein,
+    result = dict(static_feats)
+    result.update({
         "egfr_slope": egfr_slope,
         "last_egfr": last_egfr,
         "systolic_bp_slope": systolic_bp_slope,
@@ -151,7 +184,8 @@ def extract_patient_features(
         "adherence_slope": adherence_slope,
         "mean_daily_steps": mean_daily_steps,
         "steps_slope": steps_slope,
-    }
+    })
+    return result
 
 
 def build_feature_matrix(
@@ -201,3 +235,41 @@ def build_feature_matrix(
         y = pd.Series([labels_map[pid] for pid in patient_ids], index=patient_ids, name="label")
 
     return X, y
+
+
+def build_static_feature_matrix(
+    patients_df: pd.DataFrame,
+    labels_df: Optional[pd.DataFrame] = None,
+) -> Tuple[pd.DataFrame, Optional[pd.Series]]:
+    """Build the static baseline feature matrix X and target vector y.
+
+    Uses strictly static baseline demographic and laboratory parameters
+    (age, sex, diabetes, hypertension, bmi, baseline_creatinine, baseline_egfr, urine_protein).
+
+    Args:
+        patients_df: DataFrame with patient demographics and baseline labs.
+        labels_df: Optional DataFrame with rapid decline labels (0 or 1).
+
+    Returns:
+        (X, y) where X is a DataFrame with columns matching STATIC_FEATURE_NAMES,
+        indexed by patient_id, and y is the target Series if labels_df is provided.
+    """
+    feature_rows = []
+    patient_ids = []
+
+    for _, row in patients_df.iterrows():
+        p_dict = row.to_dict()
+        p_id = str(p_dict.get("patient_id", ""))
+        feats = extract_patient_static_features(p_dict)
+        feature_rows.append(feats)
+        patient_ids.append(p_id)
+
+    X = pd.DataFrame(feature_rows, index=patient_ids, columns=STATIC_FEATURE_NAMES)
+
+    y = None
+    if labels_df is not None:
+        labels_map = dict(zip(labels_df["patient_id"].astype(str), labels_df["label"].astype(int)))
+        y = pd.Series([labels_map[pid] for pid in patient_ids], index=patient_ids, name="label")
+
+    return X, y
+

@@ -49,6 +49,8 @@ venv.bak/
 *.sqlite
 *.sqlite3
 *.log
+backend/data/*.db
+backend/data/renalis.db
 
 # IDE & Editor Folders
 .vscode/
